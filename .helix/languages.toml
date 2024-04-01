@@ -1,0 +1,12 @@
+[[language]]
+name = "rust"
+roots = ["Cargo.toml", "Cargo.lock", "tailwind.config.js"]
+language-servers = ["rust-analyzer", { name = "vscode-html-language-server", except-features = ["format"] }, "tailwindcss-ls", "emmet-ls"]
+
+[language-server.rust-analyzer.config]
+# rustfmt = { overrideCommand = ["leptosfmt", "--stdin", "--rustfmt"], procMacro = { ignored = { leptos_macro = ["server", "component"] } } }
+rustfmt = { overrideCommand = ["leptosfmt", "--stdin", "--rustfmt"] }
+cargo = { features = "all" }
+
+[language-server.tailwindcss-ls]
+config = { userLanguages = { rust = "html", "*.rs" = "html" } }

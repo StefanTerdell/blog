@@ -5,10 +5,12 @@ use leptos::*;
 use leptos_icons::*;
 use leptos_meta::*;
 use leptos_router::*;
+
 mod guestbook;
 
 #[component]
 pub fn App() -> impl IntoView {
+    use crate::github::{Callback as AuthCallback, Provider as AuthProvider};
     provide_meta_context();
 
     let error_template = || {
@@ -22,12 +24,15 @@ pub fn App() -> impl IntoView {
         <Stylesheet id="leptos" href="/pkg/blog.css"/>
         <Router fallback=error_template>
             <Layout>
-                <Routes>
-                    <Route path="" view=Home/>
-                    <Route path="work" view=Work/>
-                    <Route path="blog" view=Blog/>
-                    <Route ssr=SsrMode::Async path="guestbook" view=guestbook::Guestbook/>
-                </Routes>
+                <AuthProvider>
+                    <Routes>
+                        <Route path="" view=Home/>
+                        <Route path="work" view=Work/>
+                        <Route path="blog" view=Blog/>
+                        <Route ssr=SsrMode::Async path="guestbook" view=guestbook::Guestbook/>
+                        <Route path="callback" view=AuthCallback/>
+                    </Routes>
+                </AuthProvider>
             </Layout>
         </Router>
     }
@@ -99,6 +104,13 @@ fn Home() -> impl IntoView {
         <p>
             "Feel free to checkout my work history, read some blog posts, and don't forget to leave a note in the guestbook ☺"
         </p>
+        <img src="under-construction.gif" alt="Under construction"/>
+        <i>
+            "This site was made with " <a class="underline" href="https://www.leptos.dev/">
+                "Leptos"
+            </a>
+        </i>
+        <div class="animate-bounce">"🦀"</div>
     }
 }
 

@@ -5,7 +5,7 @@ language-servers = ["rust-analyzer", { name = "vscode-html-language-server", exc
 
 [language-server.rust-analyzer.config]
 # rustfmt = { overrideCommand = ["leptosfmt", "--stdin", "--rustfmt"], procMacro = { ignored = { leptos_macro = ["server", "component"] } } }
-rustfmt = { overrideCommand = ["leptosfmt", "--stdin", "--rustfmt"] }
+rustfmt = { overrideCommand = ["leptosfmt", "--stdin", "--rustfmt"], procMacro = { ignored = { leptos_macro = ["server"] } } }
 cargo = { features = "all" }
 
 [language-server.tailwindcss-ls]

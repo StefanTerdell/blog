@@ -1,14 +1,18 @@
 use leptos::*;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[component]
 pub fn Guestbook() -> impl IntoView {
+    use crate::github::{AccountButton, LoggedIn};
     view! {
         <div class="flex flex-col gap-2">
+            <AccountButton/>
+            <LoggedIn>
+                <NewPost/>
+            </LoggedIn>
             <Await future=move || async { get_guestbook_posts().await.unwrap() } let:posts>
                 <Posts posts=posts.clone()/>
             </Await>
-            <NewPost/>
         </div>
     }
 }
@@ -33,13 +37,13 @@ fn Posts(posts: Vec<GuestbookPost>) -> impl IntoView {
         .filter_map(|post| {
             if post.published {
                 Some(view! { <Post post=post/> })
-            } else { 
+            } else {
                 None
             }
         })
         .collect_view();
 
-    view! { <div>{posts}</div> }
+    view! { <>{posts}</> }
 }
 
 #[component]
@@ -52,7 +56,6 @@ fn Post(post: GuestbookPost) -> impl IntoView {
     }
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GuestbookPost {
     pub id: i32,
@@ -62,7 +65,7 @@ pub struct GuestbookPost {
     pub content: String,
     pub published: bool,
     pub published_timestamp: i64,
-    pub edited_timestamp: Option<i64>    
+    pub edited_timestamp: Option<i64>,
 }
 
 #[server]
@@ -70,7 +73,9 @@ async fn get_guestbook_posts() -> Result<Vec<GuestbookPost>, ServerFnError> {
     use sqlx;
 
     let pool = expect_context::<sqlx::PgPool>();
-    let posts = sqlx::query_as!(GuestbookPost, "SELECT * FROM guestbook_post").fetch_all(&pool).await?;
+    let posts = sqlx::query_as!(GuestbookPost, "SELECT * FROM guestbook_post")
+        .fetch_all(&pool)
+        .await?;
 
     Ok(posts)
 }
@@ -81,7 +86,9 @@ async fn create_guestbook_post(content: String) -> Result<GuestbookPost, ServerF
 
     let pool = expect_context::<sqlx::PgPool>();
 
-    let post = sqlx::query_as!(GuestbookPost, "
+    let post = sqlx::query_as!(
+        GuestbookPost,
+        "
         INSERT INTO guestbook_post (
             user_id,
             user_name,
@@ -105,7 +112,14 @@ async fn create_guestbook_post(content: String) -> Result<GuestbookPost, ServerF
             published,
             published_timestamp,
             edited_timestamp
-        ", "The user id".into(), "The user name".into(), "The user url".into(), content).fetch_one(&pool).await?;
+        ",
+        "The user id".into(),
+        "The user name".into(),
+        "The user url".into(),
+        content
+    )
+    .fetch_one(&pool)
+    .await?;
 
     Ok(post)
 }

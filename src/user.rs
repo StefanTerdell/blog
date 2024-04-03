@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct User {
     pub id: i32,
-    pub email: String,
+    pub name: String,
+    pub url: String,
     pub admin: bool,
 }
 
@@ -20,31 +21,9 @@ pub mod ssr {
 
     impl User {
         pub async fn get_by_id(id: i32, pool: &PgPool) -> Result<Option<User>> {
-            let user = sqlx::query_as!(
-                User,
-                "SELECT id, email, admin FROM \"user\" WHERE id = $1",
-                id
-            )
-            .fetch_one(pool)
-            .await;
-
-            match user {
-                Ok(user) => Ok(Some(user)),
-                Err(err) => match err {
-                    sqlx::Error::RowNotFound => Ok(None),
-                    err => Err(err.into()),
-                },
-            }
-        }
-
-        pub async fn get_by_email(email: impl Into<String>, pool: &PgPool) -> Result<Option<User>> {
-            let user = sqlx::query_as!(
-                User,
-                "SELECT id, email, admin FROM \"user\" WHERE email = $1",
-                email.into()
-            )
-            .fetch_one(pool)
-            .await;
+            let user = sqlx::query_as!(User, "SELECT * FROM github_users WHERE id = $1", id)
+                .fetch_one(pool)
+                .await;
 
             match user {
                 Ok(user) => Ok(Some(user)),
@@ -57,21 +36,24 @@ pub mod ssr {
 
         pub async fn register(
             github_user_id: &i32,
-            email: impl Into<String>,
+            name: impl Into<String>,
+            url: impl Into<String>,
             pool: &PgPool,
         ) -> Result<User> {
-            let github_user_id = github_user_id.to_string();
+            let string_id = github_user_id.to_string();
 
             let admin = std::env::var("ADMIN_USER_IDS")
                 .unwrap()
                 .split(',')
-                .find(|admin_id| admin_id == &github_user_id)
+                .find(|admin_id| admin_id == &string_id)
                 .is_some();
 
             let user = sqlx::query_as!(
                 User,
-                "INSERT INTO \"user\" (email, admin, created_at) VALUES ($1, $2, EXTRACT(epoch FROM NOW())::BIGINT) RETURNING id, email, admin",
-                email.into(),
+                "INSERT INTO github_users (id, name, url, admin) VALUES ($1, $2, $3, $4) RETURNING *",
+                github_user_id,
+                name.into(),
+                url.into(),
                 admin
             ).fetch_one(pool).await?;
 

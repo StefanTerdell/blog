@@ -4,122 +4,260 @@ use serde::{Deserialize, Serialize};
 #[component]
 pub fn Guestbook() -> impl IntoView {
     use crate::github::{AccountButton, LoggedIn};
+    use crate::user::User;
+
+    let user = expect_context::<RwSignal<Option<User>>>();
+    let posts = create_blocking_resource(
+        user,
+        |_| async move { get_guestbook_posts().await.unwrap() },
+    );
+
     view! {
         <div class="flex flex-col gap-2">
             <AccountButton/>
             <LoggedIn>
-                <NewPost/>
+                <NewPost refetch_posts=move || posts.refetch()/>
             </LoggedIn>
-            <Await future=move || async { get_guestbook_posts().await.unwrap() } let:posts>
-                <Posts posts=posts.clone()/>
-            </Await>
+            <Transition>
+                <For
+                    each=move || posts().unwrap_or_default()
+                    key=|post| (post.id, post.published)
+                    let:post
+                >
+                    <Post post=post refetch_posts=move || posts.refetch()/>
+                </For>
+            </Transition>
         </div>
     }
 }
 
 #[component]
-fn NewPost() -> impl IntoView {
+fn NewPost<F: Fn() + 'static>(refetch_posts: F) -> impl IntoView {
     use leptos_router::ActionForm;
     let create_post = create_server_action::<CreateGuestbookPost>();
 
+    create_effect(move |_| {
+        if create_post.value().get().is_some() {
+            refetch_posts();
+        };
+    });
+
     view! {
-        <ActionForm action=create_post>
-            <label>"Say something nice" <input type="text" min=3 name="content"/></label>
-            <input type="submit" value="Submit"/>
-        </ActionForm>
+        <>
+            {move || match create_post.value().get() {
+                Some(result) => {
+                    if result.is_ok() {
+                        view! { <i>"Thanks for posting in my guestbook!"</i> }.into_view()
+                    } else {
+                        view! { <p>"Something went wrong :("</p> }.into_view()
+                    }
+                }
+                None => {
+                    view! {
+                        <ActionForm action=create_post>
+                            <label>
+                                "Say something nice"
+                                <input
+                                    disabled=move || create_post.pending()
+                                    type="text"
+                                    min=3
+                                    name="content"
+                                />
+                            </label>
+                            <input
+                                disabled=move || create_post.pending()
+                                type="submit"
+                                value="Submit"
+                            />
+                        </ActionForm>
+                    }
+                        .into_view()
+                }
+            }}
+        </>
     }
 }
 
 #[component]
-fn Posts(posts: Vec<GuestbookPost>) -> impl IntoView {
-    let posts = posts
-        .into_iter()
-        .filter_map(|post| {
-            if post.published {
-                Some(view! { <Post post=post/> })
-            } else {
-                None
-            }
-        })
-        .collect_view();
+fn Post<F: Fn() + 'static>(post: GuestbookPost, refetch_posts: F) -> impl IntoView {
+    use crate::user::User;
+    use leptos_router::ActionForm;
 
-    view! { <>{posts}</> }
-}
+    let delete_action = create_server_action::<DeletePost>();
+    let publish_action = create_server_action::<PublishPost>();
+    let user = expect_context::<RwSignal<Option<User>>>();
 
-#[component]
-fn Post(post: GuestbookPost) -> impl IntoView {
+    create_effect(move |_| {
+        if delete_action.value().get().is_some() || publish_action.value().get().is_some() {
+            refetch_posts();
+        }
+    });
+
     view! {
         <div>
-            <strong>{post.user_name} ": "</strong>
-            <span>{post.content}</span>
+            <a href=post.user_url>{post.user_name}</a>
+            <span>" said: " {post.content}</span>
+            <Show when=move || !post.published>
+                <i>"This post is awaiting moderation."</i>
+                <Show when=move || user().is_some_and(|u| u.admin)>
+                    <ActionForm action=publish_action>
+                        <input type="hidden" name="post_id" value=post.id/>
+                        <input type="submit" value="Publish"/>
+                    </ActionForm>
+                </Show>
+            </Show>
+            <Show when=move || user().is_some_and(|u| u.admin || u.id == post.user_id)>
+                <ActionForm action=delete_action>
+                    <input type="hidden" name="post_id" value=post.id/>
+                    <input type="submit" value="Delete post"/>
+                </ActionForm>
+            </Show>
         </div>
     }
+}
+
+#[server]
+async fn publish_post(post_id: i32) -> Result<(), ServerFnError> {
+    use crate::user::ssr::AuthSession;
+    use sqlx;
+
+    // logging::log!("publishing post {post_id}");
+
+    let auth_session = expect_context::<AuthSession>();
+    if !auth_session.current_user.is_some_and(|u| u.admin) {
+        return Err(ServerFnError::new("Unauthorized"));
+    };
+
+    let pool = expect_context::<sqlx::PgPool>();
+
+    sqlx::query!(
+        "UPDATE guestbook_posts SET published=true WHERE id = $1",
+        post_id
+    )
+    .execute(&pool)
+    .await?;
+
+    // logging::log!("published!");
+
+    Ok(())
+}
+
+#[server]
+async fn delete_post(post_id: i32) -> Result<(), ServerFnError> {
+    use crate::user::ssr::AuthSession;
+    use sqlx;
+
+    // logging::log!("Deleting post {post_id}");
+
+    let auth_session = expect_context::<AuthSession>();
+    let Some(user) = auth_session.current_user else {
+        return Err(ServerFnError::new("Unauthorized"));
+    };
+
+    let pool = expect_context::<sqlx::PgPool>();
+
+    let _n = if user.admin {
+        sqlx::query!("DELETE FROM guestbook_posts WHERE id = $1", post_id)
+            .execute(&pool)
+            .await?
+    } else {
+        sqlx::query!(
+            "DELETE FROM guestbook_posts WHERE id = $1 AND user_id = $2",
+            post_id,
+            user.id
+        )
+        .execute(&pool)
+        .await?
+    };
+
+    // logging::log!("Deletd {} posts", _n.rows_affected());
+
+    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GuestbookPost {
     pub id: i32,
-    pub user_id: String,
+    pub user_id: i32,
     pub user_name: String,
     pub user_url: String,
     pub content: String,
     pub published: bool,
-    pub published_timestamp: i64,
-    pub edited_timestamp: Option<i64>,
+    pub created_time: i64,
+    pub edited_time: Option<i64>,
 }
 
 #[server]
 async fn get_guestbook_posts() -> Result<Vec<GuestbookPost>, ServerFnError> {
+    use crate::user::ssr::AuthSession;
     use sqlx;
 
+    // logging::log!("Getting posts");
+
+    let user = expect_context::<AuthSession>().current_user;
     let pool = expect_context::<sqlx::PgPool>();
-    let posts = sqlx::query_as!(GuestbookPost, "SELECT * FROM guestbook_post")
-        .fetch_all(&pool)
-        .await?;
+    let posts = sqlx::query_as!(
+        GuestbookPost,
+        "
+            SELECT 
+                guestbook_posts.*,
+                github_users.name AS user_name,
+                github_users.url AS user_url
+            FROM guestbook_posts 
+            JOIN github_users ON guestbook_posts.user_id = github_users.id
+            WHERE $1 OR guestbook_posts.published=true OR guestbook_posts.user_id = $2
+            ORDER BY guestbook_posts.created_time DESC
+        ",
+        user.as_ref().is_some_and(|u| u.admin),
+        user.as_ref().map(|u| u.id).unwrap_or(-1)
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    // logging::log!("Returning {} posts", posts.len());
 
     Ok(posts)
 }
 
 #[server]
-async fn create_guestbook_post(content: String) -> Result<GuestbookPost, ServerFnError> {
+async fn create_guestbook_post(content: String) -> Result<(), ServerFnError> {
+    use crate::user::ssr::AuthSession;
     use sqlx;
+
+    // logging::log!("Creating post {content}");
+
+    let auth_session = expect_context::<AuthSession>();
+    let Some(user) = auth_session.current_user else {
+        return Err(ServerFnError::new("Unauthorized"));
+    };
+
+    // logging::log!("Authorized {user:?}");
 
     let pool = expect_context::<sqlx::PgPool>();
 
-    let post = sqlx::query_as!(
-        GuestbookPost,
+    // logging::log!("Got pool, executing");
+
+    sqlx::query!(
         "
-        INSERT INTO guestbook_post (
-            user_id,
-            user_name,
-            user_url,
-            content,
-            published,
-            published_timestamp
-        ) VALUES (
-            $1,
-            $2,
-            $3,
-            $4,
-            FALSE,
-            EXTRACT(epoch FROM NOW())::BIGINT
-        ) RETURNING 
-            id,
-            user_id,
-            user_name,
-            user_url,
-            content,
-            published,
-            published_timestamp,
-            edited_timestamp
+            INSERT INTO guestbook_posts (
+                user_id,
+                content,
+                published,
+                created_time
+            ) VALUES (
+                $1,
+                $2,
+                FALSE,
+                EXTRACT(epoch FROM NOW())::BIGINT
+            )
         ",
-        "The user id".into(),
-        "The user name".into(),
-        "The user url".into(),
+        user.id,
         content
     )
-    .fetch_one(&pool)
+    .execute(&pool)
     .await?;
 
-    Ok(post)
+    // logging::log!("Post created {post:?}");
+
+    Ok(())
 }

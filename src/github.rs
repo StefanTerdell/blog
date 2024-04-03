@@ -8,7 +8,7 @@ pub fn Provider(children: ChildrenFn) -> impl IntoView {
     let user_resource = create_resource(|| (), move |_| get_user_from_session());
 
     create_effect(move |_| {
-        if let Some(Ok(response)) = user_resource.get() {
+        if let Some(Ok(response)) = user_resource() {
             user_signal.set(response);
         }
     });
@@ -76,7 +76,6 @@ pub fn LogOutButton(#[prop(optional, into)] class: String) -> impl IntoView {
 #[component]
 pub fn Callback() -> impl IntoView {
     use crate::user::User;
-    use leptos::logging::log;
     use leptos_router::{use_navigate, use_query, NavigateOptions, Params};
 
     #[derive(Debug, Params, Clone, PartialEq)]
@@ -92,27 +91,29 @@ pub fn Callback() -> impl IntoView {
     let (error, set_error) = create_signal(None::<String>);
 
     create_effect(move |_| {
-        log!("In response effect");
+        // logging::log!("In response effect");
 
         if let Some(response) = exchange_code_action.value().get() {
             match response {
                 Ok(response) => {
-                    log!("Received response {response:?}");
+                    // logging::log!("Received response {response:?}");
                     navigate("/guestbook", NavigateOptions::default());
 
                     user.set(Some(response))
                 }
                 Err(err) => {
-                    set_error(Some("Recieved an error from the server :(".to_string()));
+                    set_error(Some(format!(
+                        "Recieved an error from the server :( {err:?}"
+                    )));
 
-                    log!("Received error {err:?}");
+                    // logging::log!("Received error {err:?}");
                 }
             }
         }
     });
 
     create_effect(move |_| {
-        log!("In query effect, {:?}", query.get_untracked());
+        // logging::log!("In query effect, {:?}", query.get_untracked());
 
         if let Ok(OAuthParams { code, state }) = query.get_untracked() {
             if let (Some(state), Some(code)) = (state, code) {
@@ -121,10 +122,10 @@ pub fn Callback() -> impl IntoView {
                     code,
                 });
             } else {
-                log!("Missing state or code in query")
+                // logging::log!("Missing state or code in query")
             }
         } else {
-            log!("Unable to parse query")
+            // logging::log!("Unable to parse query")
         }
     });
 
@@ -147,21 +148,20 @@ async fn exchange_code(
     code: String,
 ) -> Result<crate::user::User, ServerFnError> {
     use crate::user::{ssr::AuthSession, User};
-    use leptos::logging::log;
     use oauth2::{
         basic::BasicClient, reqwest::async_http_client, AuthorizationCode, TokenResponse,
     };
     use serde::Deserialize;
     use sqlx::PgPool;
 
-    log!("Exchange request started, {provided_csrf:?} {code:?}");
+    // logging::log!("Exchange request started, {provided_csrf:?} {code:?}");
 
     let pool = expect_context::<PgPool>();
     let oauth_client = expect_context::<BasicClient>();
     let auth_session = expect_context::<AuthSession>();
 
     let csrf_found = sqlx::query!(
-        "DELETE FROM csrf_token WHERE csrf_token = $1 RETURNING csrf_token",
+        "DELETE FROM csrf_tokens WHERE csrf_token = $1 RETURNING csrf_token",
         &provided_csrf
     )
     .fetch_optional(&pool)
@@ -179,13 +179,14 @@ async fn exchange_code(
 
     let access_token = token_response.access_token().secret();
 
-    log!("Token received, getting user info");
+    // logging::log!("Token received, getting user info");
 
     #[derive(Deserialize, Debug)]
     struct GithubUser {
         id: i32,
         html_url: String,
-        // name: String,
+        name: Option<String>,
+        login: String,
     }
 
     let github_user = reqwest::Client::new()
@@ -200,29 +201,33 @@ async fn exchange_code(
         .await
         .unwrap();
 
-    let user = match User::get_by_email(&github_user.html_url, &pool)
+    let user = match User::get_by_id(github_user.id, &pool)
         .await
         .map_err(|err| ServerFnError::new(err.to_string()))?
     {
         Some(user) => user,
-        None => User::register(&github_user.id, &github_user.html_url, &pool)
-            .await
-            .map_err(|err| ServerFnError::new(err.to_string()))?,
+        None => User::register(
+            &github_user.id,
+            &github_user.name.unwrap_or(github_user.login),
+            &github_user.html_url,
+            &pool,
+        )
+        .await
+        .map_err(|err| ServerFnError::new(err.to_string()))?,
     };
 
-    log!("User info received {user:?}, updating stores");
+    // logging::log!("User info received {user:?}, updating stores");
 
     auth_session.login_user(user.id);
 
-    sqlx::query!("DELETE FROM github_token WHERE user_id = $1", &user.id)
+    sqlx::query!("DELETE FROM github_tokens WHERE user_id = $1", &user.id)
         .execute(&pool)
         .await?;
 
     sqlx::query!(
-        "INSERT INTO github_token (user_id, access_token, refresh_token, created_at) VALUES ($1, $2, $3, EXTRACT(epoch FROM NOW())::BIGINT)",
+        "INSERT INTO github_tokens (user_id, access_token, created_at) VALUES ($1, $2, EXTRACT(epoch FROM NOW())::BIGINT)",
         &user.id ,
         &access_token,
-        "NO REFRESH TOKEN"
     )
     .execute(&pool)
     .await?;
@@ -241,7 +246,7 @@ async fn log_out() -> Result<(), ServerFnError> {
 
     if let Some(user) = &auth_session.current_user {
         let result = sqlx::query!(
-            "DELETE FROM github_token WHERE user_id = $1 RETURNING access_token",
+            "DELETE FROM github_tokens WHERE user_id = $1 RETURNING access_token",
             user.id
         )
         .fetch_optional(&pool)
@@ -277,7 +282,6 @@ async fn log_out() -> Result<(), ServerFnError> {
 
 #[server]
 async fn log_in() -> Result<(), ServerFnError> {
-    use leptos::logging::log;
     use oauth2::{CsrfToken, Scope};
     use sqlx;
 
@@ -290,7 +294,7 @@ async fn log_in() -> Result<(), ServerFnError> {
         .url();
 
     sqlx::query!(
-        "INSERT INTO csrf_token (csrf_token) VALUES ($1)",
+        "INSERT INTO csrf_tokens (csrf_token, created_at) VALUES ($1, EXTRACT(epoch FROM NOW())::BIGINT)",
         csrf_token.secret()
     )
     .execute(&pool)
@@ -298,7 +302,7 @@ async fn log_in() -> Result<(), ServerFnError> {
 
     let url = url.to_string();
 
-    log!("Redirecting to {}", url);
+    // logging::log!("Redirecting to {}", url);
 
     leptos_axum::redirect(&url);
 
@@ -308,7 +312,6 @@ async fn log_in() -> Result<(), ServerFnError> {
 #[server]
 pub async fn get_user_from_session() -> Result<Option<crate::user::User>, ServerFnError> {
     use crate::user::ssr::AuthSession;
-
     let auth_session = expect_context::<AuthSession>();
 
     Ok(auth_session.current_user)

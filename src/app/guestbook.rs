@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use leptos::*;
 use serde::{Deserialize, Serialize};
 
@@ -194,8 +195,7 @@ pub struct GuestbookPost {
     pub user_url: String,
     pub content: String,
     pub published: bool,
-    pub created_time: i64,
-    pub edited_time: Option<i64>,
+    pub created_time: DateTime<Utc>,
 }
 
 #[server]
@@ -253,13 +253,11 @@ async fn create_guestbook_post(content: String) -> Result<(), ServerFnError> {
             INSERT INTO guestbook_posts (
                 user_id,
                 content,
-                published,
-                created_time
+                published
             ) VALUES (
                 $1,
                 $2,
-                FALSE,
-                EXTRACT(epoch FROM NOW())::BIGINT
+                FALSE
             )
         ",
         user.id,

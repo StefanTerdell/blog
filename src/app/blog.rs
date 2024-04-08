@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use leptos::*;
 use serde::{Deserialize, Serialize};
 
@@ -51,6 +52,7 @@ fn RenderPost(post: PostData) -> impl IntoView {
 
     view! {
         <h1>{post.title}</h1>
+        <time>"Published " {post.published_time.format("%d/%m/%Y %H:%M").to_string()}</time>
         <div class="markdown" inner_html=post.content></div>
         <A class="link" href="edit">
             "Edit"
@@ -135,8 +137,8 @@ pub struct PostData {
     views: i32,
     content: String,
     published: bool,
-    published_time: i64,
-    edited_time: Option<i64>,
+    published_time: DateTime<Utc>,
+    edited_time: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -181,8 +183,8 @@ async fn get_post_or_new(slug: String) -> Result<PostData, ServerFnError> {
     let post = sqlx::query_as!(
         PostData,
         "
-            INSERT INTO blog_posts (slug, title, content, published, published_time, views)
-            VALUES ($1, '', '', FALSE, 0, 0)
+            INSERT INTO blog_posts (slug, title, content, published, views)
+            VALUES ($1, '', '', FALSE, 0)
             RETURNING *
         ",
         &slug

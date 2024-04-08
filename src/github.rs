@@ -250,8 +250,8 @@ async fn exchange_code(
     auth_session.login_user(user.id);
 
     sqlx::query!(
-        "INSERT INTO github_tokens (user_id, access_token, created_at) VALUES ($1, $2, EXTRACT(epoch FROM NOW())::BIGINT)",
-        &user.id ,
+        "INSERT INTO github_tokens (user_id, access_token) VALUES ($1, $2)",
+        &user.id,
         &access_token,
     )
     .execute(&pool)
@@ -328,7 +328,7 @@ async fn log_in() -> Result<(), ServerFnError> {
         .url();
 
     sqlx::query!(
-        "INSERT INTO csrf_tokens (csrf_token, created_at) VALUES ($1, EXTRACT(epoch FROM NOW())::BIGINT)",
+        "INSERT INTO csrf_tokens (csrf_token) VALUES ($1)",
         csrf_token.secret()
     )
     .execute(&pool)

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[component]
 pub fn Guestbook() -> impl IntoView {
-    use crate::github::{AccountButton, LoggedIn};
+    use crate::github::{LogInButton, LoggedIn};
     use crate::user::User;
 
     let user = expect_context::<RwSignal<Option<User>>>();
@@ -14,8 +14,7 @@ pub fn Guestbook() -> impl IntoView {
 
     view! {
         <div class="flex flex-col gap-2">
-            <AccountButton/>
-            <LoggedIn>
+            <LoggedIn fallback=move || view! { <LogInButton/> }>
                 <NewPost refetch_posts=move || posts.refetch()/>
             </LoggedIn>
             <Transition>
@@ -33,8 +32,10 @@ pub fn Guestbook() -> impl IntoView {
 
 #[component]
 fn NewPost<F: Fn() + 'static>(refetch_posts: F) -> impl IntoView {
+    use crate::github::LogOut;
     use leptos_router::ActionForm;
     let create_post = create_server_action::<CreateGuestbookPost>();
+    let log_out = create_server_action::<LogOut>();
 
     create_effect(move |_| {
         if create_post.value().get().is_some() {
@@ -49,26 +50,34 @@ fn NewPost<F: Fn() + 'static>(refetch_posts: F) -> impl IntoView {
                     if result.is_ok() {
                         view! { <i>"Thanks for posting in my guestbook!"</i> }.into_view()
                     } else {
-                        view! { <p>"Something went wrong :("</p> }.into_view()
+                        view! { <p class="text-red-500">"Something went wrong :("</p> }.into_view()
                     }
                 }
                 None => {
                     view! {
                         <ActionForm action=create_post>
-                            <label>
-                                "Say something nice"
+                            <div class="join">
                                 <input
+                                    placeholder="Say something nice :)"
+                                    class="input input-bordered input-sm mr-2 join-item"
                                     disabled=move || create_post.pending()
                                     type="text"
                                     min=3
                                     name="content"
                                 />
-                            </label>
-                            <input
-                                disabled=move || create_post.pending()
-                                type="submit"
-                                value="Submit"
-                            />
+                                <input
+                                    class="btn btn-sm mr-2 join-item"
+                                    disabled=move || create_post.pending()
+                                    type="submit"
+                                    value="Submit"
+                                />
+                            </div>
+                            <button
+                                class="btn btn-sm btn-neutral"
+                                on:click=move |_| log_out.dispatch(LogOut {})
+                            >
+                                "Log out"
+                            </button>
                         </ActionForm>
                     }
                         .into_view()
@@ -80,6 +89,7 @@ fn NewPost<F: Fn() + 'static>(refetch_posts: F) -> impl IntoView {
 
 #[component]
 fn Post<F: Fn() + 'static>(post: GuestbookPost, refetch_posts: F) -> impl IntoView {
+    use crate::components::Fa;
     use crate::user::User;
     use leptos_router::ActionForm;
 
@@ -95,10 +105,10 @@ fn Post<F: Fn() + 'static>(post: GuestbookPost, refetch_posts: F) -> impl IntoVi
 
     view! {
         <div>
-            <a href=post.user_url>{post.user_name}</a>
-            <span>" said: " {post.content}</span>
+            <Fa href=post.user_url>{post.user_name}</Fa>
+            <span>": " {post.content}</span>
             <Show when=move || !post.published>
-                <i>"This post is awaiting moderation."</i>
+                <span class="badge">"This post is awaiting moderation."</span>
                 <Show when=move || user().is_some_and(|u| u.admin)>
                     <ActionForm action=publish_action>
                         <input type="hidden" name="post_id" value=post.id/>
@@ -116,6 +126,7 @@ fn Post<F: Fn() + 'static>(post: GuestbookPost, refetch_posts: F) -> impl IntoVi
     }
 }
 
+// class="link text-neutral-content"
 #[server]
 async fn publish_post(post_id: i32) -> Result<(), ServerFnError> {
     use crate::user::ssr::AuthSession;

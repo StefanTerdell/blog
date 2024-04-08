@@ -1,4 +1,6 @@
+use icondata::AiGithubOutlined;
 use leptos::*;
+use leptos_icons::*;
 
 #[component]
 pub fn Provider(children: ChildrenFn) -> impl IntoView {
@@ -41,19 +43,44 @@ pub fn LoggedIn(#[prop(optional, into)] fallback: ViewFn, children: ChildrenFn) 
 }
 
 #[component]
-pub fn LogInButton(#[prop(optional, into)] class: String) -> impl IntoView {
+pub fn IsAdmin(#[prop(optional, into)] fallback: ViewFn, children: ChildrenFn) -> impl IntoView {
+    use crate::user::User;
+
+    let user = expect_context::<RwSignal<Option<User>>>();
+
+    view! {
+        <Show when=move || user().is_some_and(|u| u.admin) fallback=move || { fallback.run() }>
+            {children()}
+        </Show>
+    }
+}
+
+#[component]
+fn SubmitButton(text: &'static str) -> impl IntoView {
+    view! {
+        <button class="btn btn-sm w-48" type="submit">
+            <div class="flex gap-2 items-center">
+                <span>{text}</span>
+                <Icon width="24" height="24" icon=AiGithubOutlined/>
+            </div>
+        </button>
+    }
+}
+
+#[component]
+pub fn LogInButton() -> impl IntoView {
     use leptos_router::ActionForm;
     let action = create_server_action::<LogIn>();
 
     view! {
         <ActionForm action=action>
-            <input class=class type="submit" value="Log in with GitHub"/>
+            <SubmitButton text="Log in with GitHub"/>
         </ActionForm>
     }
 }
 
 #[component]
-pub fn LogOutButton(#[prop(optional, into)] class: String) -> impl IntoView {
+pub fn LogOutButton() -> impl IntoView {
     use crate::user::User;
     use leptos_router::ActionForm;
 
@@ -68,7 +95,7 @@ pub fn LogOutButton(#[prop(optional, into)] class: String) -> impl IntoView {
 
     view! {
         <ActionForm action=action>
-            <input class=class type="submit" value="Log out from GitHub"/>
+            <SubmitButton text="Log out from GitHub"/>
         </ActionForm>
     }
 }
@@ -218,11 +245,9 @@ async fn exchange_code(
 
     // logging::log!("User info received {user:?}, updating stores");
 
-    auth_session.login_user(user.id);
+    delete_token(&user.id, &pool).await?;
 
-    sqlx::query!("DELETE FROM github_tokens WHERE user_id = $1", &user.id)
-        .execute(&pool)
-        .await?;
+    auth_session.login_user(user.id);
 
     sqlx::query!(
         "INSERT INTO github_tokens (user_id, access_token, created_at) VALUES ($1, $2, EXTRACT(epoch FROM NOW())::BIGINT)",
@@ -235,44 +260,53 @@ async fn exchange_code(
     Ok(user)
 }
 
+#[cfg(feature = "ssr")]
+async fn delete_token(user_id: &i32, pool: &sqlx::PgPool) -> Result<(), ServerFnError> {
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Serialize, Deserialize)]
+    struct Payload {
+        access_token: String,
+    }
+
+    let result = sqlx::query_as!(
+        Payload,
+        "DELETE FROM github_tokens WHERE user_id = $1 RETURNING access_token",
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    if let Some(payload) = result {
+        reqwest::Client::new()
+            .delete(format!(
+                "https://api.github.com/applications/{}/token",
+                std::env::var("GITHUB_CLIENT_SECRET").unwrap()
+            ))
+            .header("Accept", "application/vnd.github+json")
+            .basic_auth(
+                std::env::var("GITHUB_CLIENT_ID").unwrap().to_string(),
+                Some(std::env::var("GITHUB_CLIENT_SECRET").unwrap().to_string()),
+            )
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .json(&payload)
+            .send()
+            .await?;
+    }
+
+    Ok(())
+}
+
 #[server]
 async fn log_out() -> Result<(), ServerFnError> {
     use crate::user::ssr::AuthSession;
-    use serde::Serialize;
     use sqlx::PgPool;
 
     let auth_session = expect_context::<AuthSession>();
     let pool = expect_context::<PgPool>();
 
     if let Some(user) = &auth_session.current_user {
-        let result = sqlx::query!(
-            "DELETE FROM github_tokens WHERE user_id = $1 RETURNING access_token",
-            user.id
-        )
-        .fetch_optional(&pool)
-        .await?;
-
-        if let Some(access_token) = result.map(|row| row.access_token) {
-            #[derive(Serialize)]
-            struct Payload {
-                access_token: String,
-            }
-
-            reqwest::Client::new()
-                .delete(format!(
-                    "https://api.github.com/applications/{}/token",
-                    std::env::var("GITHUB_CLIENT_SECRET").unwrap()
-                ))
-                .header("Accept", "application/vnd.github+json")
-                .basic_auth(
-                    std::env::var("GITHUB_CLIENT_ID").unwrap().to_string(),
-                    Some(std::env::var("GITHUB_CLIENT_SECRET").unwrap().to_string()),
-                )
-                .header("X-GitHub-Api-Version", "2022-11-28")
-                .json(&Payload { access_token })
-                .send()
-                .await?;
-        }
+        delete_token(&user.id, &pool).await?;
 
         auth_session.logout_user();
     };

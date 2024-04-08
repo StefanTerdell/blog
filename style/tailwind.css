@@ -1,3 +1,13 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.markdown {
+  h1 {
+    @apply text-2xl;
+  }
+
+  p {
+    @apply text-blue-500;
+  }
+}

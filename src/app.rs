@@ -1,16 +1,20 @@
-use crate::articles::ARTICLES;
-use crate::error_template::{AppError, ErrorTemplate};
-use icondata::{AiGithubFilled, AiLinkedinFilled};
 use leptos::*;
-use leptos_icons::*;
-use leptos_meta::*;
-use leptos_router::*;
 
+mod blog;
 mod guestbook;
+mod work;
 
 #[component]
 pub fn App() -> impl IntoView {
-    use crate::github::{Callback as AuthCallback, Provider as AuthProvider};
+    use crate::{
+        app::blog::{Post, Posts},
+        app::work::Work,
+        error_template::{AppError, ErrorTemplate},
+        github::{Callback as AuthCallback, Provider as AuthProvider},
+    };
+    use leptos_meta::*;
+    use leptos_router::*;
+
     provide_meta_context();
 
     let error_template = || {
@@ -28,7 +32,8 @@ pub fn App() -> impl IntoView {
                     <Routes>
                         <Route path="" view=Home/>
                         <Route path="work" view=Work/>
-                        <Route path="blog" view=Blog/>
+                        <Route ssr=SsrMode::Async path="blog" view=Posts/>
+                        <Route ssr=SsrMode::Async path="blog/:slug" view=Post/>
                         <Route ssr=SsrMode::Async path="guestbook" view=guestbook::Guestbook/>
                         <Route path="callback" view=AuthCallback/>
                     </Routes>
@@ -41,8 +46,8 @@ pub fn App() -> impl IntoView {
 #[component]
 fn Layout(children: Children) -> impl IntoView {
     view! {
-        <main class="max-w-6xl xl:mx-auto sm:my-4">
-            <Navigation/>
+        <Navigation/>
+        <main class="max-w-6xl xl:mx-auto sm:my-4 pt-8">
             <div class="max-w-3xl mx-auto">{children()}</div>
         </main>
     }
@@ -50,19 +55,23 @@ fn Layout(children: Children) -> impl IntoView {
 
 #[component]
 fn Navigation() -> impl IntoView {
+    use icondata::{AiGithubFilled, AiLinkedinFilled};
+    use leptos_icons::*;
+    use leptos_router::*;
+
     view! {
-        <div class="flex items-center justify-between px-1 sm:px-4">
+        <div class="w-full xl:mx-auto sm:my-4 flex items-center justify-between px-1 sm:px-4 fixed top-0">
             <nav class="flex gap-2">
-                <A href="/" active_class="animate-pulse">
+                <A href="/" active_class="underline">
                     "Home"
                 </A>
-                <A href="/work" active_class="animate-pulse">
+                <A href="/work" active_class="underline">
                     "Work"
                 </A>
-                <A href="/blog" active_class="animate-pulse">
+                <A href="/blog" active_class="underline">
                     "Blog"
                 </A>
-                <A href="/guestbook" active_class="animate-pulse">
+                <A href="/guestbook" active_class="underline">
                     "Guestbook"
                 </A>
             </nav>
@@ -80,56 +89,22 @@ fn Navigation() -> impl IntoView {
 
 #[component]
 fn Home() -> impl IntoView {
-    view! {
-        <h1>"Hi! I'm Stefan 👋"</h1>
-        <p>
+    use crate::components::Fa;
 
+    view! {
+        <h1 class="text-2xl my-8">"Hi! I'm Stefan 👋"</h1>
+        <p class="text-justify mb-2">
             "Thanks for checking out my homepage! I'm Stefan Terdell, a software developer currently working at "
-            <a href="https://cleura.com" target="_blank">
-                "Cleura"
-            </a>
+            <Fa href="https://cleura.com">"Cleura"</Fa>
             ". In my spare time I like to be out in nature, play music (I play guitar, drums and occassionally Nyckelharpa) and work on personal side projects. I've written some open source stuff as well, like "
-            <a href="https://www.npmjs.com/package/zod-to-json-schema" target="_blank">
-                "zod-to-json-schema"
-            </a> ". It's all on my " <a href="https://github.com/StefanTerdell" target="_blank">
-                "GitHub"
-            </a> "."
+            <Fa href="https://www.npmjs.com/package/zod-to-json-schema">"zod-to-json-schema"</Fa>
+            ". It's all on my " <Fa href="https://github.com/StefanTerdell">"GitHub"</Fa> "."
         </p>
-        <p>
-            "For some reason I always end up writing stuff related to types, schemas and DX. I started out writing C# in my spare time while playing with Unity, and later got a job writing .NET apps for Akind Group (formerly Academic Work). As a beginner I really appreciated the auto-completion and friendly compiler messages. To recreate the feeling of rapid iteration in a Unity project for mobile phones, I learned about reflection and runtime type inspection in order to build a UI overlay to tweak all of my in-game parameters. This was a good stepping stone into TypeScript later on, where the abstraction layers became even more obvious."
+        <p class="text-justify mb-2">
+            "Feel free to checkout my work history, read some blog posts, and don't forget to leave a note in the guestbook :)"
         </p>
-        <p>
-            "Lately I've been growing more and more weary of TypeScript and it's flaky ecosystem, and have been getting more and more into Rust. In fact, this website is written entirely without JavaScript (well, besides some Tailwind shenanigans), using Leptos in SSR mode. My editor of choice is Helix."
-        </p>
-        <p>
-            "Feel free to checkout my work history, read some blog posts, and don't forget to leave a note in the guestbook ☺"
-        </p>
-        <img src="under-construction.gif" alt="Under construction"/>
-        <i>
-            "This site was made with " <a class="underline" href="https://www.leptos.dev/">
-                "Leptos"
-            </a>
-        </i>
+        <img class="mx-auto my-4" src="under-construction.gif" alt="Under construction"/>
+        <i>"This site was made with " <Fa href="https://www.leptos.dev/">"Leptos"</Fa></i>
         <div class="animate-bounce">"🦀"</div>
     }
-}
-
-#[component]
-fn Work() -> impl IntoView {
-    view! { <div>"List of workplaces"</div> }
-}
-
-#[component]
-fn Blog() -> impl IntoView {
-    let articles = ARTICLES
-        .iter()
-        .map(|a| {
-            view! {
-                <h2 class="text-red-500">{a.name}</h2>
-                <p>{a.content}</p>
-            }
-        })
-        .collect_view();
-
-    view! { <div>{articles}</div> }
 }

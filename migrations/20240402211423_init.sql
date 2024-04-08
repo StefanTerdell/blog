@@ -1,17 +1,7 @@
-CREATE TABLE IF NOT EXISTS work_positions (
-    id SERIAL PRIMARY KEY,
-
-    company TEXT NOT NULL,
-    job_title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    technologies TEXT[] NOT NULL, 
-    from_date BIGINT NOT NULL,
-    to_date BIGINT 
-);
-
 CREATE TABLE IF NOT EXISTS blog_posts (
     id SERIAL PRIMARY KEY,
 
+    slug TEXT NOT NULL UNIQUE,
     title TEXT NOT NULL,
     content TEXT NOT NULL,
     published BOOLEAN NOT NULL,

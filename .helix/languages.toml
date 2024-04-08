@@ -10,3 +10,10 @@ cargo = { features = "all" }
 
 [language-server.tailwindcss-ls]
 config = { userLanguages = { rust = "html", "*.rs" = "html" } }
+
+[[language]]
+name = "css"
+language-servers = [ "vscode-css-language-server", "tailwindcss-ls" ]
+
+[language-server.vscode-css-language-server]
+config = { css = { lint = { unknownAtRules = "ignore" } } }

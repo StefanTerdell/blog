@@ -36,6 +36,7 @@ axum_session = { version = "0.13.0", optional = true }
 chrono = { version = "0.4.37", features = ["serde"] }
 oauth2 = { version = "4.4.2", optional = true }
 anyhow = "1.0.81"
+pulldown-cmark = {version= "0.10.2", optional = true }
 
 [features]
 hydrate = ["leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]
@@ -53,6 +54,7 @@ ssr = [
     "leptos_meta/ssr",
     "leptos_router/ssr",
     "dep:tracing",
+    "dep:pulldown-cmark"
 ]
 axum_session_auth = ["dep:axum_session_auth"]
 axum_session = ["dep:axum_session"]

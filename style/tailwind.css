@@ -10,4 +10,8 @@
   p {
     @apply text-blue-500;
   }
+
+  table {
+    @apply table;
+  }
 }

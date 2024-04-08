@@ -7,7 +7,7 @@ mod work;
 #[component]
 pub fn App() -> impl IntoView {
     use crate::{
-        app::blog::{Post, Posts},
+        app::blog::{EditPost, Post, Posts},
         app::work::Work,
         error_template::{AppError, ErrorTemplate},
         github::{Callback as AuthCallback, Provider as AuthProvider},
@@ -34,6 +34,7 @@ pub fn App() -> impl IntoView {
                         <Route path="work" view=Work/>
                         <Route ssr=SsrMode::Async path="blog" view=Posts/>
                         <Route ssr=SsrMode::Async path="blog/:slug" view=Post/>
+                        <Route ssr=SsrMode::Async path="blog/:slug/edit" view=EditPost/>
                         <Route ssr=SsrMode::Async path="guestbook" view=guestbook::Guestbook/>
                         <Route path="callback" view=AuthCallback/>
                     </Routes>

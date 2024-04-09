@@ -4,8 +4,6 @@ pub mod error_template;
 #[cfg(feature = "ssr")]
 pub mod fileserv;
 pub mod github;
-#[cfg(feature = "ssr")]
-pub mod state;
 pub mod user;
 
 #[cfg(feature = "hydrate")]

@@ -2,15 +2,27 @@ use chrono::{DateTime, Utc};
 use leptos::*;
 use serde::{Deserialize, Serialize};
 
+use crate::user::User;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GuestbookPost {
+    pub id: i32,
+    pub user_id: i32,
+    pub user_name: String,
+    pub user_url: String,
+    pub content: String,
+    pub published: bool,
+    pub created_time: DateTime<Utc>,
+}
+
 #[component]
 pub fn Guestbook() -> impl IntoView {
-    use crate::github::{LogInButton, LoggedIn};
-    use crate::user::User;
+    use crate::github::{LogInButton, LoggedIn, UserResource};
 
-    let user = expect_context::<RwSignal<Option<User>>>();
+    let user = expect_context::<UserResource>();
     let posts = create_blocking_resource(
-        user,
-        |_| async move { get_guestbook_posts().await.unwrap() },
+        move || user(),
+        |_| async move { get_guestbook_posts().await.unwrap_or_default() },
     );
 
     view! {
@@ -33,10 +45,10 @@ pub fn Guestbook() -> impl IntoView {
 
 #[component]
 fn NewPost<F: Fn() + 'static>(refetch_posts: F) -> impl IntoView {
-    use crate::github::LogOut;
+    use crate::github::LogOutButton;
     use leptos_router::ActionForm;
+
     let create_post = create_server_action::<CreateGuestbookPost>();
-    let log_out = create_server_action::<LogOut>();
 
     create_effect(move |_| {
         if create_post.value().get().is_some() {
@@ -47,39 +59,34 @@ fn NewPost<F: Fn() + 'static>(refetch_posts: F) -> impl IntoView {
     view! {
         <>
             {move || match create_post.value().get() {
-                Some(result) => {
-                    if result.is_ok() {
-                        view! { <i>"Thanks for posting in my guestbook!"</i> }.into_view()
-                    } else {
-                        view! { <p class="text-red-500">"Something went wrong :("</p> }.into_view()
-                    }
+                Some(Ok(_)) => view! { <i>"Thanks for posting in my guestbook!"</i> }.into_view(),
+                Some(Err(_)) => {
+                    view! { <p class="text-red-500">"Something went wrong :("</p> }.into_view()
                 }
                 None => {
                     view! {
-                        <ActionForm action=create_post>
-                            <div class="join">
-                                <input
-                                    placeholder="Say something nice :)"
-                                    class="input input-bordered input-sm mr-2 join-item"
-                                    disabled=move || create_post.pending()
-                                    type="text"
-                                    min=3
-                                    name="content"
-                                />
-                                <input
-                                    class="btn btn-sm mr-2 join-item"
-                                    disabled=move || create_post.pending()
-                                    type="submit"
-                                    value="Submit"
-                                />
-                            </div>
-                            <button
-                                class="btn btn-sm btn-neutral"
-                                on:click=move |_| log_out.dispatch(LogOut {})
-                            >
-                                "Log out"
-                            </button>
-                        </ActionForm>
+                        <div class="flex mx-auto">
+                            <ActionForm action=create_post>
+                                <div class="join">
+                                    <input
+                                        placeholder="Say something nice :)"
+                                        class="input input-bordered input-sm mr-2 join-item"
+                                        disabled=move || create_post.pending().get()
+                                        type="text"
+                                        min=3
+                                        name="content"
+                                    />
+                                    <input
+                                        class="btn btn-sm mr-2 join-item"
+                                        disabled=move || create_post.pending().get()
+                                        type="submit"
+                                        value="Submit"
+                                    />
+                                </div>
+
+                            </ActionForm>
+                            <LogOutButton small=true neutral=true/>
+                        </div>
                     }
                         .into_view()
                 }
@@ -90,13 +97,12 @@ fn NewPost<F: Fn() + 'static>(refetch_posts: F) -> impl IntoView {
 
 #[component]
 fn Post<F: Fn() + 'static>(post: GuestbookPost, refetch_posts: F) -> impl IntoView {
-    use crate::components::Fa;
-    use crate::user::User;
+    use crate::{components::Fa, github::UserResource};
     use leptos_router::ActionForm;
 
     let delete_action = create_server_action::<DeletePost>();
     let publish_action = create_server_action::<PublishPost>();
-    let user = expect_context::<RwSignal<Option<User>>>();
+    let user = expect_context::<UserResource>();
 
     create_effect(move |_| {
         if delete_action.value().get().is_some() || publish_action.value().get().is_some() {
@@ -110,14 +116,19 @@ fn Post<F: Fn() + 'static>(post: GuestbookPost, refetch_posts: F) -> impl IntoVi
             <span>": " {post.content}</span>
             <Show when=move || !post.published>
                 <span class="badge">"This post is awaiting moderation."</span>
-                <Show when=move || user().is_some_and(|u| u.admin)>
+                <Show when=move || { matches!(user(), Some(Ok(Some(User { admin: true, .. })))) }>
                     <ActionForm action=publish_action>
                         <input type="hidden" name="post_id" value=post.id/>
                         <input type="submit" value="Publish"/>
                     </ActionForm>
                 </Show>
             </Show>
-            <Show when=move || user().is_some_and(|u| u.admin || u.id == post.user_id)>
+            <Show when=move || {
+                match user() {
+                    Some(Ok(Some(User { admin, id, .. }))) => admin || id == post.user_id,
+                    _ => false,
+                }
+            }>
                 <ActionForm action=delete_action>
                     <input type="hidden" name="post_id" value=post.id/>
                     <input type="submit" value="Delete post"/>
@@ -127,13 +138,10 @@ fn Post<F: Fn() + 'static>(post: GuestbookPost, refetch_posts: F) -> impl IntoVi
     }
 }
 
-// class="link text-neutral-content"
 #[server]
 async fn publish_post(post_id: i32) -> Result<(), ServerFnError> {
     use crate::user::ssr::AuthSession;
     use sqlx;
-
-    // logging::log!("publishing post {post_id}");
 
     let auth_session = expect_context::<AuthSession>();
     if !auth_session.current_user.is_some_and(|u| u.admin) {
@@ -149,8 +157,6 @@ async fn publish_post(post_id: i32) -> Result<(), ServerFnError> {
     .execute(&pool)
     .await?;
 
-    // logging::log!("published!");
-
     Ok(())
 }
 
@@ -158,8 +164,6 @@ async fn publish_post(post_id: i32) -> Result<(), ServerFnError> {
 async fn delete_post(post_id: i32) -> Result<(), ServerFnError> {
     use crate::user::ssr::AuthSession;
     use sqlx;
-
-    // logging::log!("Deleting post {post_id}");
 
     let auth_session = expect_context::<AuthSession>();
     let Some(user) = auth_session.current_user else {
@@ -182,28 +186,13 @@ async fn delete_post(post_id: i32) -> Result<(), ServerFnError> {
         .await?
     };
 
-    // logging::log!("Deletd {} posts", _n.rows_affected());
-
     Ok(())
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GuestbookPost {
-    pub id: i32,
-    pub user_id: i32,
-    pub user_name: String,
-    pub user_url: String,
-    pub content: String,
-    pub published: bool,
-    pub created_time: DateTime<Utc>,
 }
 
 #[server]
 async fn get_guestbook_posts() -> Result<Vec<GuestbookPost>, ServerFnError> {
     use crate::user::ssr::AuthSession;
     use sqlx;
-
-    // logging::log!("Getting posts");
 
     let user = expect_context::<AuthSession>().current_user;
     let pool = expect_context::<sqlx::PgPool>();
@@ -225,8 +214,6 @@ async fn get_guestbook_posts() -> Result<Vec<GuestbookPost>, ServerFnError> {
     .fetch_all(&pool)
     .await?;
 
-    // logging::log!("Returning {} posts", posts.len());
-
     Ok(posts)
 }
 
@@ -235,18 +222,12 @@ async fn create_guestbook_post(content: String) -> Result<(), ServerFnError> {
     use crate::user::ssr::AuthSession;
     use sqlx;
 
-    // logging::log!("Creating post {content}");
-
     let auth_session = expect_context::<AuthSession>();
     let Some(user) = auth_session.current_user else {
         return Err(ServerFnError::new("Unauthorized"));
     };
 
-    // logging::log!("Authorized {user:?}");
-
     let pool = expect_context::<sqlx::PgPool>();
-
-    // logging::log!("Got pool, executing");
 
     sqlx::query!(
         "
@@ -265,8 +246,6 @@ async fn create_guestbook_post(content: String) -> Result<(), ServerFnError> {
     )
     .execute(&pool)
     .await?;
-
-    // logging::log!("Post created {post:?}");
 
     Ok(())
 }

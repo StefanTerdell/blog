@@ -10,7 +10,7 @@ pub fn App() -> impl IntoView {
         app::blog::{EditPost, Post, Posts},
         app::work::Work,
         error_template::{AppError, ErrorTemplate},
-        github::{Callback as AuthCallback, Provider as AuthProvider},
+        github::Provider as AuthProvider,
     };
     use leptos_meta::*;
     use leptos_router::*;
@@ -36,7 +36,6 @@ pub fn App() -> impl IntoView {
                         <Route ssr=SsrMode::Async path="blog/:slug" view=Post/>
                         <Route ssr=SsrMode::Async path="blog/:slug/edit" view=EditPost/>
                         <Route ssr=SsrMode::Async path="guestbook" view=guestbook::Guestbook/>
-                        <Route path="callback" view=AuthCallback/>
                     </Routes>
                 </AuthProvider>
             </Layout>

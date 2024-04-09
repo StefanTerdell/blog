@@ -4,10 +4,13 @@ use serde::{Deserialize, Serialize};
 
 #[component]
 pub fn Posts() -> impl IntoView {
-    use crate::components::FA;
+    use crate::{components::FA, github::IsAdmin};
     use leptos_router::A;
 
-    let articles = create_blocking_resource(|| (), move |_| async { get_posts().await.unwrap() });
+    let articles = create_blocking_resource(
+        || (),
+        move |_| async { get_posts().await.unwrap_or_default() },
+    );
 
     view! {
         <Transition>
@@ -16,15 +19,16 @@ pub fn Posts() -> impl IntoView {
                 <p>{post.views} " views"</p>
             </For>
         </Transition>
-        <A class="link" href="new-post/edit">
-            "New"
-        </A>
+        <IsAdmin>
+            <A class="link" href="new-post/edit">
+                "New"
+            </A>
+        </IsAdmin>
     }
 }
 
 #[component]
 pub fn Post() -> impl IntoView {
-    // use crate::github::LoggedIn;
     use leptos_router::use_params_map;
 
     let params = use_params_map();
@@ -48,20 +52,20 @@ pub fn Post() -> impl IntoView {
 
 #[component]
 fn RenderPost(post: PostData) -> impl IntoView {
+    use crate::github::IsAdmin;
     use leptos_router::A;
 
     view! {
         <h1>{post.title}</h1>
         <time>"Published " {post.published_time.format("%d/%m/%Y %H:%M").to_string()}</time>
-        <div class="markdown" inner_html=post.content></div>
-        <A class="link" href="edit">
-            "Edit"
-        </A>
+        <div class="markdown" inner_html=post.html_content></div>
+        <IsAdmin>
+            <A class="link" href="edit">
+                "Edit"
+            </A>
+        </IsAdmin>
     }
 }
-
-// <LoggedIn>
-// </LoggedIn>
 
 #[component]
 pub fn EditPost() -> impl IntoView {
@@ -89,7 +93,6 @@ pub fn EditPost() -> impl IntoView {
 }
 
 #[component]
-// fn EditPostForm<F: Fn() + 'static>(post: PostData, refetch: F) -> impl IntoView {
 fn EditPostForm(post: PostData) -> impl IntoView {
     use leptos_router::{ActionForm, A};
 
@@ -107,8 +110,8 @@ fn EditPostForm(post: PostData) -> impl IntoView {
             <input type="hidden" value=post.id.to_string() name="post[id]"/>
             <input class="input" value=&post.title name="post[title]"/>
             <input class="input" value=&post.slug name="post[slug]"/>
-            <textarea class="input" name="post[content]">
-                {post.content}
+            <textarea class="input" name="post[md_content]">
+                {post.md_content}
             </textarea>
             <input class="checkbox" type="checkbox" checked=post.published name="post[published]"/>
             <button class="btn" type="submit">
@@ -119,7 +122,6 @@ fn EditPostForm(post: PostData) -> impl IntoView {
         </ActionForm>
     }
 }
-// <input type="checkbox" checked=post.published name="post[published]"/>
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PostListItem {
@@ -135,7 +137,8 @@ pub struct PostData {
     slug: String,
     title: String,
     views: i32,
-    content: String,
+    md_content: String,
+    html_content: String,
     published: bool,
     published_time: DateTime<Utc>,
     edited_time: Option<DateTime<Utc>>,
@@ -146,20 +149,32 @@ pub struct UpdatePostData {
     id: i32,
     slug: String,
     title: String,
-    content: String,
+    md_content: String,
     published: Option<String>,
 }
 
 #[server]
 async fn update_post(post: UpdatePostData) -> Result<(), ServerFnError> {
+    use crate::user::ssr::AuthSession;
     use sqlx;
+
+    if !expect_context::<AuthSession>()
+        .current_user
+        .is_some_and(|u| u.admin)
+    {
+        return Err(ServerFnError::new("Unauthorized"));
+    };
+
     let pool = expect_context::<sqlx::PgPool>();
+    let html_content = markdown_to_html(&post.md_content);
+
     sqlx::query!(
-        "UPDATE blog_posts SET slug = $2, title = $3, content = $4, published = $5 WHERE id = $1",
+        "UPDATE blog_posts SET slug = $2, title = $3, md_content = $4, html_content = $5, published = $6 WHERE id = $1",
         &post.id,
         &post.slug,
         &post.title,
-        &post.content,
+        &post.md_content,
+        html_content,
         &post.published.is_some_and(|text| text == "on")
     )
     .execute(&pool)
@@ -170,7 +185,16 @@ async fn update_post(post: UpdatePostData) -> Result<(), ServerFnError> {
 
 #[server]
 async fn get_post_or_new(slug: String) -> Result<PostData, ServerFnError> {
+    use crate::user::ssr::AuthSession;
     use sqlx;
+
+    if !expect_context::<AuthSession>()
+        .current_user
+        .is_some_and(|u| u.admin)
+    {
+        return Err(ServerFnError::new("Unauthorized"));
+    };
+
     let pool = expect_context::<sqlx::PgPool>();
     let post = sqlx::query_as!(PostData, "SELECT * FROM blog_posts WHERE slug = $1", &slug)
         .fetch_optional(&pool)
@@ -183,8 +207,8 @@ async fn get_post_or_new(slug: String) -> Result<PostData, ServerFnError> {
     let post = sqlx::query_as!(
         PostData,
         "
-            INSERT INTO blog_posts (slug, title, content, published, views)
-            VALUES ($1, '', '', FALSE, 0)
+            INSERT INTO blog_posts (slug, title, md_content, html_content, published, views)
+            VALUES ($1, '', '', '', FALSE, 0)
             RETURNING *
         ",
         &slug
@@ -220,6 +244,7 @@ async fn get_post(slug: String) -> Result<Option<PostData>, ServerFnError> {
     let admin = expect_context::<AuthSession>()
         .current_user
         .is_some_and(|u| u.admin);
+
     let pool = expect_context::<sqlx::PgPool>();
     let post = sqlx::query_as!(
         PostData,
@@ -235,13 +260,7 @@ async fn get_post(slug: String) -> Result<Option<PostData>, ServerFnError> {
     .fetch_optional(&pool)
     .await?;
 
-    // if let Some(mut post) = post {
-    // };
-
-    Ok(post.map(|mut post| {
-        post.content = markdown_to_html(&post.content);
-        post
-    }))
+    Ok(post)
 }
 
 #[server]
@@ -249,7 +268,10 @@ async fn get_posts() -> Result<Vec<PostListItem>, ServerFnError> {
     use crate::user::ssr::AuthSession;
     use sqlx;
 
-    let user = expect_context::<AuthSession>().current_user;
+    let admin = expect_context::<AuthSession>()
+        .current_user
+        .is_some_and(|u| u.admin);
+
     let pool = expect_context::<sqlx::PgPool>();
     let posts = sqlx::query_as!(
         PostListItem,
@@ -262,7 +284,7 @@ async fn get_posts() -> Result<Vec<PostListItem>, ServerFnError> {
             FROM blog_posts
             WHERE $1 OR published
         ",
-        user.as_ref().is_some_and(|u| u.admin),
+        admin
     )
     .fetch_all(&pool)
     .await?;

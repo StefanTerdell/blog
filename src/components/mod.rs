@@ -1,6 +1,6 @@
 use leptos::*;
 
-/// A Fancy <a/> wrapper
+/// A Fancy a-tag wrapper
 #[component]
 pub fn Fa(#[prop(into)] href: String, children: Children) -> impl IntoView {
     view! {
@@ -15,7 +15,7 @@ pub fn Fa(#[prop(into)] href: String, children: Children) -> impl IntoView {
     }
 }
 
-/// A Fancy leptos_router::A wrapper
+/// A Fancy leptos_router::A-tag wrapper
 #[component]
 pub fn FA(#[prop(into)] href: String, children: Children) -> impl IntoView {
     use leptos_router::A;

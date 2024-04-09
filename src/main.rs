@@ -3,24 +3,57 @@
 async fn main() {
     dotenv::dotenv().ok();
 
-    use axum::body::Body;
-    use axum::extract::{Request, State};
-    use axum::response::IntoResponse;
-    use axum::routing::get;
-    use axum::Router;
+    use axum::{
+        body::Body,
+        extract::{FromRef, Query, Request, State},
+        response::{IntoResponse, Redirect},
+        routing::get,
+        Router,
+    };
     use axum_session::{Key, SessionConfig, SessionLayer, SessionPgPool, SessionStore};
     use axum_session_auth::{AuthConfig, AuthSessionLayer};
-    use blog::app::*;
-    use blog::fileserv::file_and_error_handler;
-    use blog::state::AppState;
-    use blog::user::{ssr::AuthSession, User};
+    use blog::{
+        app::*,
+        fileserv::file_and_error_handler,
+        github::exchange_code,
+        user::{ssr::AuthSession, User},
+    };
     use leptos::*;
     use leptos_axum::{
         generate_route_list, handle_server_fns_with_context, render_app_async_with_context,
         LeptosRoutes,
     };
-    use sqlx::postgres::PgPoolOptions;
-    use sqlx::PgPool;
+    use serde::Deserialize;
+    use sqlx::{postgres::PgPoolOptions, PgPool};
+
+    #[derive(FromRef, Debug, Clone)]
+    pub struct AppState {
+        pub leptos_options: LeptosOptions,
+        pub pool: PgPool,
+        pub oauth_client: oauth2::basic::BasicClient,
+    }
+
+    #[derive(Deserialize)]
+    struct OAuthCallbackParams {
+        pub code: String,
+        pub state: String,
+    }
+
+    async fn oauth_callback_handler(
+        Query(OAuthCallbackParams { code, state }): Query<OAuthCallbackParams>,
+        State(AppState {
+            pool, oauth_client, ..
+        }): State<AppState>,
+        auth_session: AuthSession,
+    ) -> impl IntoResponse {
+        match exchange_code(state, code, pool, oauth_client, auth_session).await {
+            Ok(target) => Redirect::to(&target),
+            Err(err) => {
+                logging::log!("Failed exchanging code: {err}");
+                Redirect::to("/")
+            }
+        }
+    }
 
     async fn server_fn_handler(
         State(app_state): State<AppState>,
@@ -111,6 +144,7 @@ async fn main() {
             "/api/*fn_name",
             get(server_fn_handler).post(server_fn_handler),
         )
+        .route("/callback", get(oauth_callback_handler))
         .leptos_routes_with_handler(routes, get(leptos_routes_handler))
         .layer(
             AuthSessionLayer::<User, i32, SessionPgPool, PgPool>::new(Some(pool.clone()))

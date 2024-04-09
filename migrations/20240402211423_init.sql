@@ -3,7 +3,8 @@ CREATE TABLE IF NOT EXISTS blog_posts (
 
     slug TEXT NOT NULL UNIQUE,
     title TEXT NOT NULL,
-    content TEXT NOT NULL,
+    md_content TEXT NOT NULL,
+    html_content TEXT NOT NULL,
 
     published BOOLEAN NOT NULL DEFAULT FALSE,
     published_time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS guestbook_posts (
 
 CREATE TABLE IF NOT EXISTS csrf_tokens (
     csrf_token TEXT NOT NULL PRIMARY KEY UNIQUE,
+    redirect_to TEXT NOT NULL,
     created_time TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

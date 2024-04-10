@@ -1,21 +1,16 @@
 use leptos::*;
 
-mod blog;
-mod guestbook;
-mod home;
-mod work;
-
 #[component]
 pub fn App() -> impl IntoView {
     use crate::{
-        app::{
+        components::github::Provider as AuthProvider,
+        pages::{
             blog::{EditPost, Post, Posts},
             guestbook::Guestbook,
             home::Home,
             work::Work,
         },
-        error_template::{AppError, ErrorTemplate},
-        github::Provider as AuthProvider,
+        utils::error_template::{AppError, ErrorTemplate},
     };
     use leptos_meta::*;
     use leptos_router::*;

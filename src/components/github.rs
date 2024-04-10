@@ -1,4 +1,4 @@
-use crate::user::User;
+use crate::utils::user::User;
 use icondata::AiGithubOutlined;
 use leptos::*;
 use leptos_icons::*;
@@ -164,7 +164,7 @@ async fn log_in(redirect_to: String) -> Result<(), ServerFnError> {
 
 #[server]
 async fn log_out() -> Result<(), ServerFnError> {
-    use crate::user::ssr::AuthSession;
+    use crate::utils::user::ssr::AuthSession;
     use sqlx::PgPool;
 
     let auth_session = expect_context::<AuthSession>();
@@ -181,7 +181,7 @@ async fn log_out() -> Result<(), ServerFnError> {
 
 #[server]
 pub async fn get_user_from_session() -> Result<Option<User>, ServerFnError> {
-    use crate::user::ssr::AuthSession;
+    use crate::utils::user::ssr::AuthSession;
     let auth_session = expect_context::<AuthSession>();
 
     Ok(auth_session.current_user)
@@ -193,7 +193,7 @@ pub async fn exchange_code(
     code: String,
     pool: sqlx::PgPool,
     oauth_client: oauth2::basic::BasicClient,
-    auth_session: crate::user::ssr::AuthSession,
+    auth_session: crate::utils::user::ssr::AuthSession,
 ) -> anyhow::Result<String> {
     use anyhow::bail;
     use oauth2::{reqwest::async_http_client, AuthorizationCode, TokenResponse};

@@ -2,7 +2,7 @@ use leptos::*;
 
 #[component]
 pub fn Home() -> impl IntoView {
-    use crate::components::{Fa, FA};
+    use crate::components::links::{Fa, FA};
 
     view! {
         <article class="prose max-w-6xl">

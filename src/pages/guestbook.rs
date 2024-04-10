@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use leptos::*;
 use serde::{Deserialize, Serialize};
 
-use crate::user::User;
+use crate::utils::user::User;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GuestbookPost {
@@ -17,7 +17,7 @@ pub struct GuestbookPost {
 
 #[component]
 pub fn Guestbook() -> impl IntoView {
-    use crate::github::{LogInButton, LoggedIn, UserResource};
+    use crate::components::github::{LogInButton, LoggedIn, UserResource};
 
     let user = expect_context::<UserResource>();
     let posts = create_blocking_resource(move || user(), move |_| get_guestbook_posts());
@@ -56,7 +56,7 @@ pub fn Guestbook() -> impl IntoView {
 
 #[component]
 fn NewPost<F: Fn() + 'static>(refetch_posts: F) -> impl IntoView {
-    use crate::github::LogOutButton;
+    use crate::components::github::LogOutButton;
     use leptos_router::ActionForm;
 
     let create_post = create_server_action::<CreateGuestbookPost>();
@@ -108,7 +108,7 @@ fn NewPost<F: Fn() + 'static>(refetch_posts: F) -> impl IntoView {
 
 #[component]
 fn Post<F: Fn() + 'static>(post: GuestbookPost, refetch_posts: F) -> impl IntoView {
-    use crate::{components::Fa, github::UserResource};
+    use crate::components::{github::UserResource, links::Fa};
     use leptos_router::ActionForm;
 
     let delete_action = create_server_action::<DeletePost>();
@@ -157,7 +157,7 @@ fn Post<F: Fn() + 'static>(post: GuestbookPost, refetch_posts: F) -> impl IntoVi
 
 #[server]
 async fn publish_post(post_id: i32) -> Result<(), ServerFnError> {
-    use crate::user::ssr::AuthSession;
+    use crate::utils::user::ssr::AuthSession;
     use sqlx;
 
     let auth_session = expect_context::<AuthSession>();
@@ -179,7 +179,7 @@ async fn publish_post(post_id: i32) -> Result<(), ServerFnError> {
 
 #[server]
 async fn delete_post(post_id: i32) -> Result<(), ServerFnError> {
-    use crate::user::ssr::AuthSession;
+    use crate::utils::user::ssr::AuthSession;
     use sqlx;
 
     let auth_session = expect_context::<AuthSession>();
@@ -208,7 +208,7 @@ async fn delete_post(post_id: i32) -> Result<(), ServerFnError> {
 
 #[server]
 async fn get_guestbook_posts() -> Result<Vec<GuestbookPost>, ServerFnError> {
-    use crate::user::ssr::AuthSession;
+    use crate::utils::user::ssr::AuthSession;
     use sqlx;
 
     let user = expect_context::<AuthSession>().current_user;
@@ -236,7 +236,7 @@ async fn get_guestbook_posts() -> Result<Vec<GuestbookPost>, ServerFnError> {
 
 #[server]
 async fn create_guestbook_post(content: String) -> Result<(), ServerFnError> {
-    use crate::user::ssr::AuthSession;
+    use crate::utils::user::ssr::AuthSession;
     use sqlx;
 
     let auth_session = expect_context::<AuthSession>();

@@ -14,9 +14,9 @@ async fn main() {
     use axum_session_auth::{AuthConfig, AuthSessionLayer};
     use blog::{
         app::*,
+        components::github::exchange_code,
         fileserv::file_and_error_handler,
-        github::exchange_code,
-        user::{ssr::AuthSession, User},
+        utils::user::{ssr::AuthSession, User},
     };
     use leptos::*;
     use leptos_axum::{

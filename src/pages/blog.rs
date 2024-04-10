@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[component]
 pub fn Posts() -> impl IntoView {
-    use crate::{components::FA, github::IsAdmin};
+    use crate::components::{github::IsAdmin, links::FA};
     use leptos_router::A;
 
     let articles = create_blocking_resource(|| (), move |_| get_posts());
@@ -76,7 +76,7 @@ pub fn Post() -> impl IntoView {
 
 #[component]
 fn RenderPost(post: PostData) -> impl IntoView {
-    use crate::{components::FA, github::IsAdmin};
+    use crate::components::{github::IsAdmin, links::FA};
     use leptos_router::A;
 
     view! {
@@ -231,7 +231,7 @@ pub struct UpdatePostResult {
 
 #[server]
 async fn update_post(post: UpdatePostData) -> Result<UpdatePostResult, ServerFnError> {
-    use crate::user::ssr::AuthSession;
+    use crate::utils::user::ssr::AuthSession;
     use sqlx;
 
     if !expect_context::<AuthSession>()
@@ -311,7 +311,7 @@ async fn update_post(post: UpdatePostData) -> Result<UpdatePostResult, ServerFnE
 
 #[server]
 async fn get_post_or_new(slug: String) -> Result<PostData, ServerFnError> {
-    use crate::user::ssr::AuthSession;
+    use crate::utils::user::ssr::AuthSession;
     use sqlx;
 
     if !expect_context::<AuthSession>()
@@ -364,7 +364,7 @@ pub fn markdown_to_html(content: &String) -> String {
 
 #[server]
 async fn get_post(slug: String) -> Result<Option<PostData>, ServerFnError> {
-    use crate::user::ssr::AuthSession;
+    use crate::utils::user::ssr::AuthSession;
     use sqlx;
 
     let admin = expect_context::<AuthSession>()
@@ -391,7 +391,7 @@ async fn get_post(slug: String) -> Result<Option<PostData>, ServerFnError> {
 
 #[server]
 async fn get_posts() -> Result<Vec<PostListItem>, ServerFnError> {
-    use crate::user::ssr::AuthSession;
+    use crate::utils::user::ssr::AuthSession;
     use sqlx;
 
     let admin = expect_context::<AuthSession>()

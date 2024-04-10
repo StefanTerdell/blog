@@ -114,7 +114,7 @@ fn PositionHeader(
     company: String,
     company_url: Option<String>,
 ) -> impl IntoView {
-    use crate::components::Fa;
+    use crate::components::links::Fa;
 
     let company_el = match company_url {
         Some(href) => view! { <Fa href=href>{company}</Fa> }.into_view(),

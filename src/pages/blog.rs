@@ -166,7 +166,7 @@ fn EditPostForm(post: PostData) -> impl IntoView {
                     <span class="label-text">"Slug"</span>
                 </div>
                 <textarea
-                    style="height: 575px;"
+                    style="height: 530px;"
                     class="textarea textarea-bordered font-mono"
                     name="post[md_content]"
                 >

@@ -20,28 +20,39 @@ pub fn Guestbook() -> impl IntoView {
     use crate::github::{LogInButton, LoggedIn, UserResource};
 
     let user = expect_context::<UserResource>();
-    let posts = create_blocking_resource(
-        move || user(),
-        |_| async move { get_guestbook_posts().await.unwrap_or_default() },
-    );
+    let posts = create_blocking_resource(move || user(), move |_| get_guestbook_posts());
+    let refetch = move || posts.refetch();
 
     view! {
-        <div class="flex flex-col gap-2">
+        <div class="flex flex-col gap-4">
             <LoggedIn fallback=move || view! { <LogInButton/> }>
                 <NewPost refetch_posts=move || posts.refetch()/>
             </LoggedIn>
             <Transition>
-                <For
-                    each=move || posts().unwrap_or_default()
-                    key=|post| (post.id, post.published)
-                    let:post
-                >
-                    <Post post=post refetch_posts=move || posts.refetch()/>
-                </For>
+                {move || match posts() {
+                    Some(Ok(posts)) => {
+                        posts
+                            .into_iter()
+                            .map(|post| {
+                                view! { <Post post=post refetch_posts=refetch/> }
+                            })
+                            .collect_view()
+                    }
+                    Some(Err(err)) => format!("{err:?}").into_view(),
+                    None => {
+                        view! { <div class="loading loading-spinner mx-auto"></div> }.into_view()
+                    }
+                }}
+
             </Transition>
         </div>
     }
 }
+// <For
+//     each=move || posts().unwrap_or_default()
+//     key=|post| (post.id, post.published)
+//     let:post
+// />
 
 #[component]
 fn NewPost<F: Fn() + 'static>(refetch_posts: F) -> impl IntoView {
@@ -59,10 +70,10 @@ fn NewPost<F: Fn() + 'static>(refetch_posts: F) -> impl IntoView {
     view! {
         <>
             {move || match create_post.value().get() {
-                Some(Ok(_)) => view! { <i>"Thanks for posting in my guestbook!"</i> }.into_view(),
-                Some(Err(_)) => {
-                    view! { <p class="text-red-500">"Something went wrong :("</p> }.into_view()
+                Some(Ok(_)) => {
+                    view! { <i>"Thanks for posting in my guestbook! 💖"</i> }.into_view()
                 }
+                Some(Err(err)) => format!("{err:?}").into_view(),
                 None => {
                     view! {
                         <div class="flex mx-auto">
@@ -111,29 +122,35 @@ fn Post<F: Fn() + 'static>(post: GuestbookPost, refetch_posts: F) -> impl IntoVi
     });
 
     view! {
-        <div>
-            <Fa href=post.user_url>{post.user_name}</Fa>
-            <span>": " {post.content}</span>
+        <div class="flex flex-col items-center">
             <Show when=move || !post.published>
-                <span class="badge">"This post is awaiting moderation."</span>
-                <Show when=move || { matches!(user(), Some(Ok(Some(User { admin: true, .. })))) }>
+                <i class="badge">"This post is awaiting moderation."</i>
+            </Show>
+            <div>
+                <Fa href=post.user_url>{post.user_name}</Fa>
+                <span>": " {post.content}</span>
+            </div>
+            <div class="flex gap-2">
+                <Show when=move || {
+                    !post.published && matches!(user(), Some(Ok(Some(User { admin: true, .. }))))
+                }>
                     <ActionForm action=publish_action>
                         <input type="hidden" name="post_id" value=post.id/>
-                        <input type="submit" value="Publish"/>
+                        <input class="cursor-pointer" type="submit" value="Publish"/>
                     </ActionForm>
                 </Show>
-            </Show>
-            <Show when=move || {
-                match user() {
-                    Some(Ok(Some(User { admin, id, .. }))) => admin || id == post.user_id,
-                    _ => false,
-                }
-            }>
-                <ActionForm action=delete_action>
-                    <input type="hidden" name="post_id" value=post.id/>
-                    <input type="submit" value="Delete post"/>
-                </ActionForm>
-            </Show>
+                <Show when=move || {
+                    match user() {
+                        Some(Ok(Some(User { admin, id, .. }))) => admin || id == post.user_id,
+                        _ => false,
+                    }
+                }>
+                    <ActionForm action=delete_action>
+                        <input type="hidden" name="post_id" value=post.id/>
+                        <input class="cursor-pointer" type="submit" value="Delete post"/>
+                    </ActionForm>
+                </Show>
+            </div>
         </div>
     }
 }

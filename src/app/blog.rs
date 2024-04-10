@@ -7,21 +7,43 @@ pub fn Posts() -> impl IntoView {
     use crate::{components::FA, github::IsAdmin};
     use leptos_router::A;
 
-    let articles = create_blocking_resource(
-        || (),
-        move |_| async { get_posts().await.unwrap_or_default() },
-    );
+    let articles = create_blocking_resource(|| (), move |_| get_posts());
 
     view! {
         <Transition>
-            <For each=move || articles().unwrap_or_default() key=|post| post.title.clone() let:post>
-                <FA href=format!("/blog/{}", post.slug)>{post.title.clone()}</FA>
-                <p>{post.views} " views"</p>
-            </For>
+            <div class="flex flex-col gap-4">
+                {move || match articles() {
+                    Some(Ok(articles)) => {
+                        articles
+                            .into_iter()
+                            .map(|post| {
+                                view! {
+                                    <div>
+                                        <FA class="text-2xl font-serif" href=post.slug>
+                                            {post.title}
+                                        </FA>
+                                        <p class="prose-neutral italic font-mono">
+                                            <time>
+                                                {post.published_time.format("%d/%m/%Y").to_string()}
+                                            </time>
+                                            <span>" - " {post.views} " views"</span>
+                                        </p>
+                                    </div>
+                                }
+                            })
+                            .collect_view()
+                    }
+                    Some(Err(err)) => format!("{err:?}").into_view(),
+                    None => {
+                        view! { <div class="loading loading-spinner mx-auto"></div> }.into_view()
+                    }
+                }}
+
+            </div>
         </Transition>
         <IsAdmin>
             <A class="link" href="new-post/edit">
-                "New"
+                "New post"
             </A>
         </IsAdmin>
     }
@@ -38,12 +60,14 @@ pub fn Post() -> impl IntoView {
     view! {
         <Transition>
             {move || {
-                post.get()
-                    .map(|post| match post {
-                        Ok(Some(post)) => view! { <RenderPost post=post/> }.into_view(),
-                        Ok(None) => "No post found".into_view(),
-                        Err(err) => format!("{err:?}").into_view(),
-                    })
+                match post.get() {
+                    Some(Ok(Some(post))) => view! { <RenderPost post=post/> }.into_view(),
+                    Some(Ok(None)) => "No post found".into_view(),
+                    Some(Err(err)) => format!("{err:?}").into_view(),
+                    None => {
+                        view! { <div class="loading loading-spinner mx-auto"></div> }.into_view()
+                    }
+                }
             }}
 
         </Transition>
@@ -52,13 +76,20 @@ pub fn Post() -> impl IntoView {
 
 #[component]
 fn RenderPost(post: PostData) -> impl IntoView {
-    use crate::github::IsAdmin;
+    use crate::{components::FA, github::IsAdmin};
     use leptos_router::A;
 
     view! {
-        <h1>{post.title}</h1>
-        <time>"Published " {post.published_time.format("%d/%m/%Y %H:%M").to_string()}</time>
-        <div class="markdown" inner_html=post.html_content></div>
+        <article class="prose max-w-6xl">
+            <h1 class="text-5xl mb-2 font-serif">
+                <FA href="/blog">{post.title}</FA>
+            </h1>
+            <time class="italic font-mono">
+                {post.published_time.format("Published %d/%m/%Y").to_string()}
+                {post.edited_time.map(|e| e.format(", Edited %d/%m/%Y").to_string())}
+            </time>
+            <div class="markdown" inner_html=post.html_content></div>
+        </article>
         <IsAdmin>
             <A class="link" href="edit">
                 "Edit"
@@ -73,19 +104,18 @@ pub fn EditPost() -> impl IntoView {
 
     let params = use_params_map();
     let slug = move || params.with(|params| params.get("slug").cloned().unwrap_or_default());
-    let post = create_blocking_resource(
-        move || slug(),
-        |slug| async move { get_post_or_new(slug).await },
-    );
+    let post = create_blocking_resource(move || slug(), move |slug| get_post_or_new(slug));
 
     view! {
         <Transition>
             {move || {
-                post.get()
-                    .map(|post| match post {
-                        Ok(post) => view! { <EditPostForm post=post/> }.into_view(),
-                        Err(err) => format!("{err:?}").into_view(),
-                    })
+                match post.get() {
+                    Some(Ok(post)) => view! { <EditPostForm post=post/> }.into_view(),
+                    Some(Err(err)) => format!("{err:?}").into_view(),
+                    None => {
+                        view! { <div class="loading loading-spinner mx-auto"></div> }.into_view()
+                    }
+                }
             }}
 
         </Transition>
@@ -100,24 +130,64 @@ fn EditPostForm(post: PostData) -> impl IntoView {
 
     let result = move || {
         action.value().get().map(|res| match res {
-            Ok(_) => view! { <span>"Ok!"</span> }.into_view(),
+            Ok(UpdatePostResult { saved_time, .. }) => {
+                view! { <span>{saved_time.format("Saved %d/%m/%Y %H:%M:%S").to_string()}</span> }
+                    .into_view()
+            }
             Err(err) => view! { <span>{format!("{err:?}")}</span> }.into_view(),
         })
     };
 
+    let (href, set_href) = create_signal(format!("/blog/{}", post.slug));
+
+    create_effect(move |_| {
+        if let Some(Ok(UpdatePostResult { slug, .. })) = action.value().get() {
+            set_href(format!("/blog/{}", slug));
+        }
+    });
+
     view! {
-        <ActionForm action=action>
+        <ActionForm action=action class="flex flex-col">
             <input type="hidden" value=post.id.to_string() name="post[id]"/>
-            <input class="input" value=&post.title name="post[title]"/>
-            <input class="input" value=&post.slug name="post[slug]"/>
-            <textarea class="input" name="post[md_content]">
-                {post.md_content}
-            </textarea>
-            <input class="checkbox" type="checkbox" checked=post.published name="post[published]"/>
+            <label class="form-control">
+                <div class="label">
+                    <span class="label-text">"Title"</span>
+                </div>
+                <input class="input input-bordered" value=&post.title name="post[title]"/>
+            </label>
+            <label class="form-control">
+                <div class="label">
+                    <span class="label-text">"Slug"</span>
+                </div>
+                <input class="input input-bordered" value=&post.slug name="post[slug]"/>
+            </label>
+            <label class="form-control">
+                <div class="label">
+                    <span class="label-text">"Slug"</span>
+                </div>
+                <textarea
+                    style="height: 575px;"
+                    class="textarea textarea-bordered font-mono"
+                    name="post[md_content]"
+                >
+                    {post.md_content}
+                </textarea>
+            </label>
+            <div class="form-control">
+                <label class="label cursor-pointer">
+                    <span class="label-text">"Published"</span>
+                    <input
+                        class="checkbox"
+                        type="checkbox"
+                        checked=post.published
+                        name="post[published]"
+                    />
+                </label>
+            </div>
             <button class="btn" type="submit">
                 "Submit"
             </button>
-            <A href=format!("/blog/{}", post.slug)>"Back to post"</A>
+            <A href=href>"Back to post"</A>
             {result}
         </ActionForm>
     }
@@ -128,7 +198,7 @@ pub struct PostListItem {
     slug: String,
     title: String,
     views: i64,
-    published: bool,
+    published_time: DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -153,8 +223,14 @@ pub struct UpdatePostData {
     published: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UpdatePostResult {
+    saved_time: DateTime<Utc>,
+    slug: String,
+}
+
 #[server]
-async fn update_post(post: UpdatePostData) -> Result<(), ServerFnError> {
+async fn update_post(post: UpdatePostData) -> Result<UpdatePostResult, ServerFnError> {
     use crate::user::ssr::AuthSession;
     use sqlx;
 
@@ -165,22 +241,72 @@ async fn update_post(post: UpdatePostData) -> Result<(), ServerFnError> {
         return Err(ServerFnError::new("Unauthorized"));
     };
 
+    let published = post.published.is_some_and(|p| p == "on");
     let pool = expect_context::<sqlx::PgPool>();
     let html_content = markdown_to_html(&post.md_content);
 
-    sqlx::query!(
-        "UPDATE blog_posts SET slug = $2, title = $3, md_content = $4, html_content = $5, published = $6 WHERE id = $1",
+    #[derive(Deserialize)]
+    struct Status {
+        published: bool,
+        published_time: DateTime<Utc>,
+    }
+
+    let status = sqlx::query_as!(
+        Status,
+        "
+            SELECT published, published_time
+            FROM blog_posts
+            WHERE id = $1
+        ",
+        &post.id
+    )
+    .fetch_one(&pool)
+    .await?;
+
+    let now = chrono::offset::Utc::now();
+
+    let (published_time, edited_time) = if !status.published && published {
+        (now.clone(), None)
+    } else {
+        (status.published_time, Some(now.clone()))
+    };
+
+    #[derive(Deserialize)]
+    struct Returning {
+        slug: String,
+    }
+
+    let result = sqlx::query_as!(
+        Returning,
+        "
+            UPDATE blog_posts 
+            SET 
+                slug = $2,
+                title = $3,
+                md_content = $4,
+                html_content = $5,
+                published = $6,
+                published_time = $7,
+                edited_time = $8
+            WHERE id = $1
+            RETURNING slug
+        ",
         &post.id,
         &post.slug,
         &post.title,
         &post.md_content,
         html_content,
-        &post.published.is_some_and(|text| text == "on")
+        published,
+        published_time,
+        edited_time
     )
-    .execute(&pool)
+    .fetch_one(&pool)
     .await?;
 
-    Ok(())
+    Ok(UpdatePostResult {
+        saved_time: now,
+        slug: result.slug,
+    })
 }
 
 #[server]
@@ -280,9 +406,10 @@ async fn get_posts() -> Result<Vec<PostListItem>, ServerFnError> {
                 slug,
                 title,
                 views,
-                published
+                published_time
             FROM blog_posts
             WHERE $1 OR published
+            ORDER BY published_time DESC
         ",
         admin
     )

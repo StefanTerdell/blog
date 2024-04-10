@@ -121,15 +121,18 @@ fn PositionHeader(
         None => company.into_view(),
     };
 
-    let class = "text-lg font-black";
+    view! {
+        <div class="font-serif text-2xl font-black whitespace-nowrap">
+            {match dir {
+                Direction::Left => {
+                    view! { <>{title} ", " {company_el}</> }
+                }
+                Direction::Right => {
+                    view! { <>{company_el} ", " {title}</> }
+                }
+            }}
 
-    match dir {
-        Direction::Left => {
-            view! { <div class=class>{title} ", " {company_el}</div> }
-        }
-        Direction::Right => {
-            view! { <div class=class>{company_el} ", " {title}</div> }
-        }
+        </div>
     }
 }
 
@@ -150,7 +153,7 @@ fn Position(pos: PositionInfo, dir: Direction) -> impl IntoView {
                     company=pos.company
                     company_url=pos.company_url
                 />
-                <time class="font-mono italic">{pos.start_month_and_year}</time>
+                <time class="italic font-mono">{pos.start_month_and_year}</time>
                 <p>{pos.description}</p>
             </div>
             <hr/>

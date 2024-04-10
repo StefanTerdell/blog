@@ -5,8 +5,12 @@ module.exports = {
     files: ["*.html", "./src/**/*.rs"],
   },
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ["LibreBodoni"],
+      },
+    },
   },
-  plugins: [require("daisyui")],
-  daisyui: { themes: ["sunset"]}
+  plugins: [require("@tailwindcss/typography"), require("daisyui")],
+  daisyui: { themes: ["sunset"] },
 };

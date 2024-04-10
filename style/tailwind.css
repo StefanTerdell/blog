@@ -2,13 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  @font-face {
+    font-family: 'LibreBodoni';
+    font-style: normal;
+    font-weight: 400;
+    font-dislay: swap;
+    src: url("/fonts/LibreBodoni-Regular.otf") format('otf')
+  }
+}
+
+.fancy-link {
+  @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
+}
+
 .markdown {
-  h1 {
-    @apply text-2xl;
+  @apply text-left;
+
+  h1 h2 h3 h4 {
+    @apply font-serif;
   }
 
-  p {
-    @apply text-blue-500;
+  a {
+    @apply fancy-link;
   }
 
   table {

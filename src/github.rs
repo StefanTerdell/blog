@@ -127,15 +127,7 @@ fn GithubIconButton(
             <div class="flex gap-2 items-center">
                 <span>{text}</span>
                 <Show when=move || !small>
-                    <Show
-                        when=move || loading()
-                        fallback=move || {
-                            view! { <Icon width="24" height="24" icon=AiGithubOutlined/> }
-                        }
-                    >
-
-                        <div class="w-6 h-6 loading-spinner"></div>
-                    </Show>
+                    <Icon width="24" height="24" icon=AiGithubOutlined/>
                 </Show>
             </div>
         </button>

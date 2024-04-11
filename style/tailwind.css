@@ -10,6 +10,12 @@
     font-dislay: swap;
     src: url("/fonts/LibreBodoni-Regular.otf") format('otf')
   }
+
+  html {
+    font-family: sans-serif;
+    text-align: center;
+    padding-left: calc(100vw - 100%);
+  }
 }
 
 .fancy-link {

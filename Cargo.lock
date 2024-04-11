@@ -419,6 +419,7 @@ dependencies = [
  "reqwest 0.12.1",
  "serde",
  "serde_json",
+ "server_fn",
  "sqlx",
  "thiserror",
  "tokio",
@@ -426,6 +427,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
@@ -2992,6 +2994,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-lite"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9e8277ab91a9f0d9ba8d626675f18b456372bccbf642db35d36a8f011ae016c"
+dependencies = [
+ "serde",
+ "serde-lite-derive",
+]
+
+[[package]]
+name = "serde-lite-derive"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ce26a84e3d8d10853301cf6a75c58132b8f5d5e8fee65949ea8dd7758d6760b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.53",
+]
+
+[[package]]
 name = "serde-wasm-bindgen"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3077,9 +3100,9 @@ dependencies = [
 
 [[package]]
 name = "server_fn"
-version = "0.6.9"
+version = "0.6.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2955da1dc5fcd970c182ebf1089af6c5f19051e1f286a21f7b96490a49b7a531"
+checksum = "536a5b959673643ee01e59ae41bf01425482c8070dee95d7061ee2d45296b59c"
 dependencies = [
  "axum",
  "bytes",
@@ -3093,9 +3116,11 @@ dependencies = [
  "hyper 1.2.0",
  "inventory",
  "js-sys",
+ "multer",
  "once_cell",
  "send_wrapper",
  "serde",
+ "serde-lite",
  "serde_json",
  "serde_qs",
  "server_fn_macro_default",

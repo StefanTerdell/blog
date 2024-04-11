@@ -3,6 +3,8 @@ pub mod components;
 #[cfg(feature = "ssr")]
 pub mod fileserv;
 pub mod pages;
+#[cfg(feature = "ssr")]
+pub mod state;
 pub mod utils;
 
 #[cfg(feature = "hydrate")]

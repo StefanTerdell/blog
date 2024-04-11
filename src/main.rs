@@ -5,7 +5,7 @@ async fn main() {
 
     use axum::{
         body::Body,
-        extract::{FromRef, Query, Request, State},
+        extract::{Path, Query, Request, State},
         response::{IntoResponse, Redirect},
         routing::get,
         Router,
@@ -16,8 +16,10 @@ async fn main() {
         app::*,
         components::github::exchange_code,
         fileserv::file_and_error_handler,
+        state::AppState,
         utils::user::{ssr::AuthSession, User},
     };
+    use http::{header, StatusCode};
     use leptos::*;
     use leptos_axum::{
         generate_route_list, handle_server_fns_with_context, render_app_async_with_context,
@@ -25,13 +27,6 @@ async fn main() {
     };
     use serde::Deserialize;
     use sqlx::{postgres::PgPoolOptions, PgPool};
-
-    #[derive(FromRef, Debug, Clone)]
-    pub struct AppState {
-        pub leptos_options: LeptosOptions,
-        pub pool: PgPool,
-        pub oauth_client: oauth2::basic::BasicClient,
-    }
 
     #[derive(Deserialize)]
     struct OAuthCallbackParams {
@@ -52,6 +47,40 @@ async fn main() {
                 logging::log!("Failed exchanging code: {err}");
                 Redirect::to("/")
             }
+        }
+    }
+
+    async fn blog_asset_handler(
+        Path(file_name): Path<String>,
+        State(AppState { pool, .. }): State<AppState>,
+    ) -> impl IntoResponse {
+        use serde::Deserialize;
+        use sqlx;
+
+        #[derive(Deserialize)]
+        struct DbResponse {
+            data: Vec<u8>,
+        }
+
+        let db_response = sqlx::query_as!(
+            DbResponse,
+            "SELECT data FROM blog_post_assets WHERE file_name = $1",
+            file_name
+        )
+        .fetch_optional(&pool)
+        .await;
+
+        match db_response {
+            Ok(Some(DbResponse { data })) => (
+                [(
+                    header::CONTENT_DISPOSITION,
+                    format!("attachment; filename=\"{file_name}\""),
+                )],
+                Body::from(data),
+            )
+                .into_response(),
+            Ok(None) => StatusCode::NOT_FOUND.into_response(),
+            Err(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response(),
         }
     }
 
@@ -144,6 +173,7 @@ async fn main() {
             "/api/*fn_name",
             get(server_fn_handler).post(server_fn_handler),
         )
+        .route("/blog-asset/:file_name", get(blog_asset_handler))
         .route("/callback", get(oauth_callback_handler))
         .leptos_routes_with_handler(routes, get(leptos_routes_handler))
         .layer(

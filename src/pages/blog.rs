@@ -1,6 +1,8 @@
 use chrono::{DateTime, Utc};
 use leptos::*;
 use serde::{Deserialize, Serialize};
+use wasm_bindgen::JsCast;
+use web_sys::{Event, FormData, HtmlFormElement, HtmlInputElement, SubmitEvent};
 
 #[component]
 pub fn Posts() -> impl IntoView {
@@ -46,6 +48,7 @@ pub fn Posts() -> impl IntoView {
                 "New post"
             </A>
         </IsAdmin>
+        <BlogPostAssets blog_post_id=2/>
     }
 }
 
@@ -126,10 +129,10 @@ pub fn EditPost() -> impl IntoView {
 fn EditPostForm(post: PostData) -> impl IntoView {
     use leptos_router::{ActionForm, A};
 
-    let action = create_server_action::<UpdatePost>();
+    let update_post_action = create_server_action::<UpdatePost>();
 
     let result = move || {
-        action.value().get().map(|res| match res {
+        update_post_action.value().get().map(|res| match res {
             Ok(UpdatePostResult { saved_time, .. }) => {
                 view! { <span>{saved_time.format("Saved %d/%m/%Y %H:%M:%S").to_string()}</span> }
                     .into_view()
@@ -141,13 +144,13 @@ fn EditPostForm(post: PostData) -> impl IntoView {
     let (href, set_href) = create_signal(format!("/blog/{}", post.slug));
 
     create_effect(move |_| {
-        if let Some(Ok(UpdatePostResult { slug, .. })) = action.value().get() {
+        if let Some(Ok(UpdatePostResult { slug, .. })) = update_post_action.value().get() {
             set_href(format!("/blog/{}", slug));
         }
     });
 
     view! {
-        <ActionForm action=action class="flex flex-col">
+        <ActionForm action=update_post_action class="flex flex-col">
             <input type="hidden" value=post.id.to_string() name="post[id]"/>
             <label class="form-control">
                 <div class="label">
@@ -190,7 +193,217 @@ fn EditPostForm(post: PostData) -> impl IntoView {
             <A href=href>"Back to post"</A>
             {result}
         </ActionForm>
+        <BlogPostAssets blog_post_id=post.id/>
     }
+}
+
+#[component]
+fn BlogPostAssets(blog_post_id: i32) -> impl IntoView {
+    let file_names_resource =
+        create_blocking_resource(|| (), move |_| get_blog_post_asset_list(blog_post_id));
+
+    let items = move || {
+        match file_names_resource.get() {
+                    Some(Ok(file_names)) => {
+                        file_names
+                            .into_iter()
+                            .map(|file_name| {
+                                view! { <BlogPostAssetsItem file_name=file_name refetch=move || file_names_resource.refetch()/> }
+                            })
+                            .collect_view()
+                    },
+                    Some(Err(err)) => format!("{err:?}").into_view(),
+                    None => "loading".into_view(),
+                }
+    };
+
+    view! {
+        <div>
+            <Transition>
+                <ul>{items()}</ul>
+            </Transition>
+            <UploadBlogPostAsset
+                blog_post_id=blog_post_id
+                refetch=move || file_names_resource.refetch()
+            />
+        </div>
+    }
+}
+
+#[component]
+fn BlogPostAssetsItem<F: Fn() + 'static>(file_name: String, refetch: F) -> impl IntoView {
+    let action = create_server_action::<DeleteBlogPostAsset>();
+    let ffs = file_name.clone();
+    let handle_click = move |_| {
+        action.dispatch(DeleteBlogPostAsset {
+            file_name: file_name.clone(),
+        });
+    };
+
+    create_effect(move |_| {
+        if matches!(action.value().get(), Some(_)) {
+            refetch();
+        }
+    });
+
+    view! { <li>{ffs} <button on:click=handle_click>"Delete"</button></li> }
+}
+
+#[server]
+async fn get_blog_post_asset_list(blog_post_id: i32) -> Result<Vec<String>, ServerFnError> {
+    use serde::Deserialize;
+    use sqlx::postgres::PgPool;
+
+    let pool = expect_context::<PgPool>();
+
+    #[derive(Deserialize)]
+    struct Row {
+        file_name: String,
+    }
+
+    let rows = sqlx::query_as!(
+        Row,
+        "SELECT file_name FROM blog_post_assets WHERE blog_post_id = $1",
+        blog_post_id
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    Ok(rows.into_iter().map(|r| r.file_name).collect())
+}
+
+#[server]
+async fn delete_blog_post_asset(file_name: String) -> Result<(), ServerFnError> {
+    use sqlx::postgres::PgPool;
+
+    let pool = expect_context::<PgPool>();
+
+    sqlx::query!(
+        "DELETE FROM blog_post_assets WHERE file_name = $1",
+        file_name
+    )
+    .execute(&pool)
+    .await?;
+
+    Ok(())
+}
+
+#[component]
+fn UploadBlogPostAsset<F: Fn() + 'static>(blog_post_id: i32, refetch: F) -> impl IntoView {
+    let (file_name, set_file_name) = create_signal("AAAAA".to_string());
+
+    let handle_file_name_change = move |ev: Event| {
+        let mut file_name = ev
+            .target()
+            .unwrap()
+            .unchecked_into::<HtmlInputElement>()
+            .value();
+
+        if file_name.starts_with("C:\\fakepath\\") {
+            file_name = file_name[12..].to_string();
+        }
+
+        set_file_name(file_name);
+    };
+
+    let upload_action = create_action(move |data: &FormData| file_upload(data.clone().into()));
+
+    let handle_submit = move |ev: SubmitEvent| {
+        ev.prevent_default();
+        let target = ev.target().unwrap().unchecked_into::<HtmlFormElement>();
+        let form_data = FormData::new_with_form(&target).unwrap();
+        upload_action.dispatch(form_data);
+    };
+
+    create_effect(move |_| {
+        if matches!(upload_action.value().get(), Some(Ok(_))) {
+            refetch();
+        }
+    });
+
+    view! {
+        <form on:submit=handle_submit>
+            <input type="hidden" name="blog_post_id" value=blog_post_id/>
+            <input type="hidden" name="file_name" prop:value=file_name/>
+            <input
+                type="file"
+                class="file-input file-input-bordered"
+                name="file_to_upload"
+                on:change=handle_file_name_change
+            />
+            <input type="submit" class="btn" value="upload"/>
+        </form>
+        <p>
+            {move || {
+                if upload_action.input().get().is_none() && upload_action.value().get().is_none() {
+                    "Upload a file.".to_string()
+                } else if upload_action.pending().get() {
+                    "Uploading...".to_string()
+                } else if let Some(Ok(value)) = upload_action.value().get() {
+                    value.to_string()
+                } else {
+                    format!("{:?}", upload_action.value().get())
+                }
+            }}
+
+        </p>
+    }
+}
+
+use server_fn::codec::{MultipartData, MultipartFormData};
+
+#[server(input = MultipartFormData)]
+async fn file_upload(data: MultipartData) -> Result<usize, ServerFnError> {
+    use sqlx;
+
+    println!("Uploading file");
+
+    let mut data = data.into_inner().unwrap();
+    let mut file_name = vec![];
+    let mut file_data = vec![];
+    let mut blog_post_id = vec![];
+
+    while let Ok(Some(mut field)) = data.next_field().await {
+        let name = field.name().unwrap_or_default().to_string();
+
+        if name == "blog_post_id" {
+            while let Ok(Some(chunk)) = field.chunk().await {
+                let mut chunk = chunk.into_iter().collect::<Vec<_>>();
+                blog_post_id.append(&mut chunk);
+            }
+        } else if name == "file_name" {
+            while let Ok(Some(chunk)) = field.chunk().await {
+                let mut chunk = chunk.into_iter().collect::<Vec<_>>();
+                file_name.append(&mut chunk);
+            }
+        } else if name == "file_to_upload" {
+            while let Ok(Some(chunk)) = field.chunk().await {
+                let mut chunk = chunk.into_iter().collect::<Vec<_>>();
+                file_data.append(&mut chunk);
+            }
+        }
+    }
+
+    println!("Done extracting bytes");
+
+    let blog_post_id = String::from_utf8(blog_post_id)?.parse::<i32>()?;
+    let file_name = String::from_utf8(file_name)?;
+    let file_size = file_data.len();
+
+    println!("Received {file_name} size {file_size} for blog post {blog_post_id}");
+
+    let pool = expect_context::<sqlx::PgPool>();
+
+    sqlx::query!(
+        "INSERT INTO blog_post_assets (file_name, data, blog_post_id) VALUES ($1, $2, $3)",
+        file_name,
+        file_data,
+        blog_post_id
+    )
+    .execute(&pool)
+    .await?;
+
+    Ok(file_size)
 }
 
 #[derive(Serialize, Deserialize, Clone)]

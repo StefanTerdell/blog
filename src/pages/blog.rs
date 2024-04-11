@@ -322,31 +322,26 @@ fn UploadBlogPostAsset<F: Fn() + 'static>(blog_post_id: i32, refetch: F) -> impl
     });
 
     view! {
-        <form on:submit=handle_submit>
+        <form on:submit=handle_submit class="join">
             <input type="hidden" name="blog_post_id" value=blog_post_id/>
             <input type="hidden" name="file_name" prop:value=file_name/>
             <input
                 type="file"
-                class="file-input file-input-bordered"
+                class="file-input file-input-bordered file-input-sm join-item"
                 name="file_to_upload"
                 on:change=handle_file_name_change
             />
-            <input type="submit" class="btn" value="upload"/>
+            <input type="submit" class="btn btn-sm join-item" value="upload"/>
         </form>
-        <p>
-            {move || {
-                if upload_action.input().get().is_none() && upload_action.value().get().is_none() {
-                    "Upload a file.".to_string()
-                } else if upload_action.pending().get() {
-                    "Uploading...".to_string()
-                } else if let Some(Ok(value)) = upload_action.value().get() {
-                    value.to_string()
-                } else {
-                    format!("{:?}", upload_action.value().get())
-                }
-            }}
-
-        </p>
+        {move || {
+            upload_action
+                .value()
+                .get()
+                .map(|v| match v {
+                    Ok(bytes) => view! { <p>{format!("Uploaded {bytes} bytes")}</p> },
+                    Err(err) => view! { <p>{format!("{err:?}")}</p> },
+                })
+        }}
     }
 }
 

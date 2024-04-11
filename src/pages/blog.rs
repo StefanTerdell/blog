@@ -48,7 +48,6 @@ pub fn Posts() -> impl IntoView {
                 "New post"
             </A>
         </IsAdmin>
-        <BlogPostAssets blog_post_id=2/>
     }
 }
 
@@ -219,8 +218,11 @@ fn BlogPostAssets(blog_post_id: i32) -> impl IntoView {
 
     view! {
         <div>
+            <div class="divider">"Files"</div>
             <Transition>
-                <ul>{items()}</ul>
+                <table class="table w-96 mx-auto">
+                    <tbody>{items()}</tbody>
+                </table>
             </Transition>
             <UploadBlogPostAsset
                 blog_post_id=blog_post_id
@@ -246,7 +248,14 @@ fn BlogPostAssetsItem<F: Fn() + 'static>(file_name: String, refetch: F) -> impl 
         }
     });
 
-    view! { <li>{ffs} <button on:click=handle_click>"Delete"</button></li> }
+    view! {
+        <tr>
+            <td>{ffs}</td>
+            <td class="text-right">
+                <button on:click=handle_click>"Delete"</button>
+            </td>
+        </tr>
+    }
 }
 
 #[server]

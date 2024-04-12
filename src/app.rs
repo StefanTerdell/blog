@@ -5,7 +5,7 @@ pub fn App() -> impl IntoView {
     use crate::{
         components::github::Provider as AuthProvider,
         pages::{
-            blog::{EditPost, Post, Posts},
+            blog::{BlogPost, BlogPosts, EditBlogPost},
             guestbook::Guestbook,
             home::Home,
             work::Work,
@@ -34,9 +34,9 @@ pub fn App() -> impl IntoView {
                         <Routes>
                             <Route path="" view=Home/>
                             <Route path="work" view=Work/>
-                            <Route ssr=SsrMode::Async path="blog" view=Posts/>
-                            <Route ssr=SsrMode::Async path="blog/:slug" view=Post/>
-                            <Route ssr=SsrMode::Async path="blog/:slug/edit" view=EditPost/>
+                            <Route ssr=SsrMode::Async path="blog" view=BlogPosts/>
+                            <Route ssr=SsrMode::Async path="blog/:slug" view=BlogPost/>
+                            <Route ssr=SsrMode::Async path="blog/:slug/edit" view=EditBlogPost/>
                             <Route ssr=SsrMode::Async path="guestbook" view=Guestbook/>
                         </Routes>
                     </main>

@@ -50,7 +50,7 @@ async fn main() {
         }
     }
 
-    async fn blog_asset_handler(
+    async fn blog_file_handler(
         Path(file_name): Path<String>,
         State(AppState { pool, .. }): State<AppState>,
     ) -> impl IntoResponse {
@@ -173,7 +173,7 @@ async fn main() {
             "/api/*fn_name",
             get(server_fn_handler).post(server_fn_handler),
         )
-        .route("/blog-asset/:file_name", get(blog_asset_handler))
+        .route("/blog-files/:file_name", get(blog_file_handler))
         .route("/callback", get(oauth_callback_handler))
         .leptos_routes_with_handler(routes, get(leptos_routes_handler))
         .layer(

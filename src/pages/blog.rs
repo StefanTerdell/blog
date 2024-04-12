@@ -5,11 +5,11 @@ use wasm_bindgen::JsCast;
 use web_sys::{Event, FormData, HtmlFormElement, HtmlInputElement, SubmitEvent};
 
 #[component]
-pub fn Posts() -> impl IntoView {
+pub fn BlogPosts() -> impl IntoView {
     use crate::components::{github::IsAdmin, links::FA};
     use leptos_router::A;
 
-    let articles = create_blocking_resource(|| (), move |_| get_posts());
+    let articles = create_blocking_resource(|| (), move |_| get_blog_post_list());
 
     view! {
         <Transition>
@@ -52,18 +52,18 @@ pub fn Posts() -> impl IntoView {
 }
 
 #[component]
-pub fn Post() -> impl IntoView {
+pub fn BlogPost() -> impl IntoView {
     use leptos_router::use_params_map;
 
     let params = use_params_map();
     let slug = move || params.with(|params| params.get("slug").cloned().unwrap_or_default());
-    let post = create_blocking_resource(move || slug(), |slug| async move { get_post(slug).await });
+    let post = create_blocking_resource(move || slug(), move |slug| get_blog_post(slug));
 
     view! {
         <Transition>
             {move || {
                 match post.get() {
-                    Some(Ok(Some(post))) => view! { <RenderPost post=post/> }.into_view(),
+                    Some(Ok(Some(post))) => view! { <RenderBlogPost post=post/> }.into_view(),
                     Some(Ok(None)) => "No post found".into_view(),
                     Some(Err(err)) => format!("{err:?}").into_view(),
                     None => {
@@ -77,7 +77,7 @@ pub fn Post() -> impl IntoView {
 }
 
 #[component]
-fn RenderPost(post: PostData) -> impl IntoView {
+fn RenderBlogPost(post: BlogPost) -> impl IntoView {
     use crate::components::{github::IsAdmin, links::FA};
     use leptos_router::A;
 
@@ -101,18 +101,27 @@ fn RenderPost(post: PostData) -> impl IntoView {
 }
 
 #[component]
-pub fn EditPost() -> impl IntoView {
+pub fn EditBlogPost() -> impl IntoView {
     use leptos_router::use_params_map;
 
     let params = use_params_map();
     let slug = move || params.with(|params| params.get("slug").cloned().unwrap_or_default());
-    let post = create_blocking_resource(move || slug(), move |slug| get_post_or_new(slug));
+    let post = create_blocking_resource(
+        move || slug(),
+        move |slug| get_blog_post_or_create_new(slug),
+    );
 
     view! {
         <Transition>
             {move || {
                 match post.get() {
-                    Some(Ok(post)) => view! { <EditPostForm post=post/> }.into_view(),
+                    Some(Ok(post)) => {
+                        view! {
+                            <EditBlogPostForm post=post.clone()/>
+                            <BlogPostFiles blog_post_id=post.id/>
+                        }
+                            .into_view()
+                    }
                     Some(Err(err)) => format!("{err:?}").into_view(),
                     None => {
                         view! { <div class="loading loading-spinner mx-auto"></div> }.into_view()
@@ -125,14 +134,14 @@ pub fn EditPost() -> impl IntoView {
 }
 
 #[component]
-fn EditPostForm(post: PostData) -> impl IntoView {
+fn EditBlogPostForm(post: BlogPost) -> impl IntoView {
     use leptos_router::{ActionForm, A};
 
-    let update_post_action = create_server_action::<UpdatePost>();
+    let update_post_action = create_server_action::<UpdateBlogPost>();
 
     let result = move || {
         update_post_action.value().get().map(|res| match res {
-            Ok(UpdatePostResult { saved_time, .. }) => {
+            Ok(UpdateBlogPostResult { saved_time, .. }) => {
                 view! { <span>{saved_time.format("Saved %d/%m/%Y %H:%M:%S").to_string()}</span> }
                     .into_view()
             }
@@ -143,7 +152,7 @@ fn EditPostForm(post: PostData) -> impl IntoView {
     let (href, set_href) = create_signal(format!("/blog/{}", post.slug));
 
     create_effect(move |_| {
-        if let Some(Ok(UpdatePostResult { slug, .. })) = update_post_action.value().get() {
+        if let Some(Ok(UpdateBlogPostResult { slug, .. })) = update_post_action.value().get() {
             set_href(format!("/blog/{}", slug));
         }
     });
@@ -192,14 +201,13 @@ fn EditPostForm(post: PostData) -> impl IntoView {
             <A href=href>"Back to post"</A>
             {result}
         </ActionForm>
-        <BlogPostAssets blog_post_id=post.id/>
     }
 }
 
 #[component]
-fn BlogPostAssets(blog_post_id: i32) -> impl IntoView {
+fn BlogPostFiles(blog_post_id: i32) -> impl IntoView {
     let file_names_resource =
-        create_blocking_resource(|| (), move |_| get_blog_post_asset_list(blog_post_id));
+        create_blocking_resource(|| (), move |_| get_blog_post_file_list(blog_post_id));
 
     let items = move || {
         match file_names_resource.get() {
@@ -207,7 +215,7 @@ fn BlogPostAssets(blog_post_id: i32) -> impl IntoView {
                         file_names
                             .into_iter()
                             .map(|file_name| {
-                                view! { <BlogPostAssetsItem file_name=file_name refetch=move || file_names_resource.refetch()/> }
+                                view! { <BlogPostFileListItem file_name=file_name refetch=move || file_names_resource.refetch()/> }
                             })
                             .collect_view()
                     },
@@ -224,7 +232,7 @@ fn BlogPostAssets(blog_post_id: i32) -> impl IntoView {
                     <tbody>{items()}</tbody>
                 </table>
             </Transition>
-            <UploadBlogPostAsset
+            <UploadBlogPostFileForm
                 blog_post_id=blog_post_id
                 refetch=move || file_names_resource.refetch()
             />
@@ -233,11 +241,11 @@ fn BlogPostAssets(blog_post_id: i32) -> impl IntoView {
 }
 
 #[component]
-fn BlogPostAssetsItem<F: Fn() + 'static>(file_name: String, refetch: F) -> impl IntoView {
-    let action = create_server_action::<DeleteBlogPostAsset>();
+fn BlogPostFileListItem<F: Fn() + 'static>(file_name: String, refetch: F) -> impl IntoView {
+    let action = create_server_action::<DeleteBlogPostFile>();
     let ffs = file_name.clone();
     let handle_click = move |_| {
-        action.dispatch(DeleteBlogPostAsset {
+        action.dispatch(DeleteBlogPostFile {
             file_name: file_name.clone(),
         });
     };
@@ -251,7 +259,7 @@ fn BlogPostAssetsItem<F: Fn() + 'static>(file_name: String, refetch: F) -> impl 
     view! {
         <tr>
             <td>
-                <a class="link" href=format!("/blog-asset/{ffs}") target="_blank">
+                <a class="link" href=format!("/blog-files/{ffs}") target="_blank">
                     {ffs}
                 </a>
             </td>
@@ -262,11 +270,27 @@ fn BlogPostAssetsItem<F: Fn() + 'static>(file_name: String, refetch: F) -> impl 
     }
 }
 
+#[cfg(feature = "ssr")]
+pub fn expect_admin() -> Result<crate::utils::user::User, ServerFnError> {
+    let auth_session = expect_context::<crate::utils::user::ssr::AuthSession>();
+
+    let user = auth_session.current_user;
+
+    if let Some(user) = user {
+        if user.admin {
+            return Ok(user);
+        }
+    };
+
+    Err(ServerFnError::new("Unauthorized"))
+}
+
 #[server]
-async fn get_blog_post_asset_list(blog_post_id: i32) -> Result<Vec<String>, ServerFnError> {
+async fn get_blog_post_file_list(blog_post_id: i32) -> Result<Vec<String>, ServerFnError> {
     use serde::Deserialize;
     use sqlx::postgres::PgPool;
 
+    let _ = expect_admin()?;
     let pool = expect_context::<PgPool>();
 
     #[derive(Deserialize)]
@@ -286,9 +310,10 @@ async fn get_blog_post_asset_list(blog_post_id: i32) -> Result<Vec<String>, Serv
 }
 
 #[server]
-async fn delete_blog_post_asset(file_name: String) -> Result<(), ServerFnError> {
+async fn delete_blog_post_file(file_name: String) -> Result<(), ServerFnError> {
     use sqlx::postgres::PgPool;
 
+    let _ = expect_admin();
     let pool = expect_context::<PgPool>();
 
     sqlx::query!(
@@ -302,7 +327,7 @@ async fn delete_blog_post_asset(file_name: String) -> Result<(), ServerFnError> 
 }
 
 #[component]
-fn UploadBlogPostAsset<F: Fn() + 'static>(blog_post_id: i32, refetch: F) -> impl IntoView {
+fn UploadBlogPostFileForm<F: Fn() + 'static>(blog_post_id: i32, refetch: F) -> impl IntoView {
     let (file_name, set_file_name) = create_signal("AAAAA".to_string());
 
     let handle_file_name_change = move |ev: Event| {
@@ -319,7 +344,8 @@ fn UploadBlogPostAsset<F: Fn() + 'static>(blog_post_id: i32, refetch: F) -> impl
         set_file_name(file_name);
     };
 
-    let upload_action = create_action(move |data: &FormData| file_upload(data.clone().into()));
+    let upload_action =
+        create_action(move |data: &FormData| upload_blog_post_file(data.clone().into()));
 
     let handle_submit = move |ev: SubmitEvent| {
         ev.stop_propagation();
@@ -365,10 +391,10 @@ fn UploadBlogPostAsset<F: Fn() + 'static>(blog_post_id: i32, refetch: F) -> impl
 use server_fn::codec::{MultipartData, MultipartFormData};
 
 #[server(input = MultipartFormData)]
-async fn file_upload(data: MultipartData) -> Result<usize, ServerFnError> {
+async fn upload_blog_post_file(data: MultipartData) -> Result<usize, ServerFnError> {
     use sqlx;
 
-    println!("Uploading file");
+    let _ = expect_admin();
 
     let mut data = data.into_inner().unwrap();
     let mut file_name = vec![];
@@ -396,13 +422,9 @@ async fn file_upload(data: MultipartData) -> Result<usize, ServerFnError> {
         }
     }
 
-    println!("Done extracting bytes");
-
     let blog_post_id = String::from_utf8(blog_post_id)?.parse::<i32>()?;
     let file_name = String::from_utf8(file_name)?;
     let file_size = file_data.len();
-
-    println!("Received {file_name} size {file_size} for blog post {blog_post_id}");
 
     let pool = expect_context::<sqlx::PgPool>();
 
@@ -419,7 +441,7 @@ async fn file_upload(data: MultipartData) -> Result<usize, ServerFnError> {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct PostListItem {
+pub struct BlogPostListItem {
     slug: String,
     title: String,
     views: i64,
@@ -427,7 +449,7 @@ pub struct PostListItem {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PostData {
+pub struct BlogPost {
     id: i32,
     slug: String,
     title: String,
@@ -440,7 +462,7 @@ pub struct PostData {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct UpdatePostData {
+pub struct UpdateBlogPostPayload {
     id: i32,
     slug: String,
     title: String,
@@ -449,23 +471,18 @@ pub struct UpdatePostData {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct UpdatePostResult {
+pub struct UpdateBlogPostResult {
     saved_time: DateTime<Utc>,
     slug: String,
 }
 
 #[server]
-async fn update_post(post: UpdatePostData) -> Result<UpdatePostResult, ServerFnError> {
-    use crate::utils::user::ssr::AuthSession;
+async fn update_blog_post(
+    post: UpdateBlogPostPayload,
+) -> Result<UpdateBlogPostResult, ServerFnError> {
     use sqlx;
 
-    if !expect_context::<AuthSession>()
-        .current_user
-        .is_some_and(|u| u.admin)
-    {
-        return Err(ServerFnError::new("Unauthorized"));
-    };
-
+    let _ = expect_admin();
     let published = post.published.is_some_and(|p| p == "on");
     let pool = expect_context::<sqlx::PgPool>();
     let html_content = markdown_to_html(&post.md_content);
@@ -528,26 +545,20 @@ async fn update_post(post: UpdatePostData) -> Result<UpdatePostResult, ServerFnE
     .fetch_one(&pool)
     .await?;
 
-    Ok(UpdatePostResult {
+    Ok(UpdateBlogPostResult {
         saved_time: now,
         slug: result.slug,
     })
 }
 
 #[server]
-async fn get_post_or_new(slug: String) -> Result<PostData, ServerFnError> {
-    use crate::utils::user::ssr::AuthSession;
+async fn get_blog_post_or_create_new(slug: String) -> Result<BlogPost, ServerFnError> {
     use sqlx;
 
-    if !expect_context::<AuthSession>()
-        .current_user
-        .is_some_and(|u| u.admin)
-    {
-        return Err(ServerFnError::new("Unauthorized"));
-    };
+    let _ = expect_admin();
 
     let pool = expect_context::<sqlx::PgPool>();
-    let post = sqlx::query_as!(PostData, "SELECT * FROM blog_posts WHERE slug = $1", &slug)
+    let post = sqlx::query_as!(BlogPost, "SELECT * FROM blog_posts WHERE slug = $1", &slug)
         .fetch_optional(&pool)
         .await?;
 
@@ -556,7 +567,7 @@ async fn get_post_or_new(slug: String) -> Result<PostData, ServerFnError> {
     }
 
     let post = sqlx::query_as!(
-        PostData,
+        BlogPost,
         "
             INSERT INTO blog_posts (slug, title, md_content, html_content, published, views)
             VALUES ($1, '', '', '', FALSE, 0)
@@ -588,17 +599,17 @@ pub fn markdown_to_html(content: &String) -> String {
 }
 
 #[server]
-async fn get_post(slug: String) -> Result<Option<PostData>, ServerFnError> {
+async fn get_blog_post(slug: String) -> Result<Option<BlogPost>, ServerFnError> {
     use crate::utils::user::ssr::AuthSession;
     use sqlx;
 
-    let admin = expect_context::<AuthSession>()
+    let is_admin = expect_context::<AuthSession>()
         .current_user
         .is_some_and(|u| u.admin);
 
     let pool = expect_context::<sqlx::PgPool>();
     let post = sqlx::query_as!(
-        PostData,
+        BlogPost,
         "
             UPDATE blog_posts
             SET views = views + 1
@@ -606,7 +617,7 @@ async fn get_post(slug: String) -> Result<Option<PostData>, ServerFnError> {
             RETURNING *
         ",
         slug,
-        admin
+        is_admin
     )
     .fetch_optional(&pool)
     .await?;
@@ -615,17 +626,17 @@ async fn get_post(slug: String) -> Result<Option<PostData>, ServerFnError> {
 }
 
 #[server]
-async fn get_posts() -> Result<Vec<PostListItem>, ServerFnError> {
+async fn get_blog_post_list() -> Result<Vec<BlogPostListItem>, ServerFnError> {
     use crate::utils::user::ssr::AuthSession;
     use sqlx;
 
-    let admin = expect_context::<AuthSession>()
+    let is_admin = expect_context::<AuthSession>()
         .current_user
         .is_some_and(|u| u.admin);
 
     let pool = expect_context::<sqlx::PgPool>();
     let posts = sqlx::query_as!(
-        PostListItem,
+        BlogPostListItem,
         "
             SELECT 
                 slug,
@@ -636,7 +647,7 @@ async fn get_posts() -> Result<Vec<PostListItem>, ServerFnError> {
             WHERE $1 OR published
             ORDER BY published_time DESC
         ",
-        admin
+        is_admin
     )
     .fetch_all(&pool)
     .await?;

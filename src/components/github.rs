@@ -123,7 +123,7 @@ fn GithubIconButton(
     }
 
     view! {
-        <button class=class class:disabled=loading type="submit" disabled=move || loading()>
+        <button class=class class:disabled=loading type="submit" disabled=loading>
             <div class="flex gap-2 items-center">
                 <span>{text}</span>
                 <Show when=move || !small>

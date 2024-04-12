@@ -250,7 +250,11 @@ fn BlogPostAssetsItem<F: Fn() + 'static>(file_name: String, refetch: F) -> impl 
 
     view! {
         <tr>
-            <td>{ffs}</td>
+            <td>
+                <a class="link" href=format!("/blog-asset/{ffs}") target="_blank">
+                    {ffs}
+                </a>
+            </td>
             <td class="text-right">
                 <button on:click=handle_click>"Delete"</button>
             </td>
@@ -318,9 +322,11 @@ fn UploadBlogPostAsset<F: Fn() + 'static>(blog_post_id: i32, refetch: F) -> impl
     let upload_action = create_action(move |data: &FormData| file_upload(data.clone().into()));
 
     let handle_submit = move |ev: SubmitEvent| {
+        ev.stop_propagation();
         ev.prevent_default();
         let target = ev.target().unwrap().unchecked_into::<HtmlFormElement>();
         let form_data = FormData::new_with_form(&target).unwrap();
+
         upload_action.dispatch(form_data);
     };
 
@@ -331,16 +337,18 @@ fn UploadBlogPostAsset<F: Fn() + 'static>(blog_post_id: i32, refetch: F) -> impl
     });
 
     view! {
-        <form on:submit=handle_submit class="join">
+        <form on:submit=handle_submit>
             <input type="hidden" name="blog_post_id" value=blog_post_id/>
             <input type="hidden" name="file_name" prop:value=file_name/>
-            <input
-                type="file"
-                class="file-input file-input-bordered file-input-sm join-item"
-                name="file_to_upload"
-                on:change=handle_file_name_change
-            />
-            <input type="submit" class="btn btn-sm join-item" value="upload"/>
+            <div class="join">
+                <input
+                    type="file"
+                    class="file-input file-input-bordered file-input-sm join-item"
+                    name="file_to_upload"
+                    on:change=handle_file_name_change
+                />
+                <input type="submit" class="btn btn-sm join-item" value="upload"/>
+            </div>
         </form>
         {move || {
             upload_action

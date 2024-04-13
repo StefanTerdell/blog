@@ -22,6 +22,7 @@ WORKDIR /app
 COPY . .
 
 # Build the app
+ENV SQLX_OFFLINE="true"
 RUN cargo leptos build --release -vv
 
 FROM debian:bookworm-slim as runtime

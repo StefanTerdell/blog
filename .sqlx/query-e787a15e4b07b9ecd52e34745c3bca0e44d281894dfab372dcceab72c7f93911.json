@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                guestbook_posts.*,\n                github_users.name AS user_name,\n                github_users.url AS user_url\n            FROM guestbook_posts \n            JOIN github_users ON guestbook_posts.user_id = github_users.id\n            WHERE $1 OR guestbook_posts.published=true OR guestbook_posts.user_id = $2\n            ORDER BY guestbook_posts.created_time DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "published",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_time",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "user_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "user_url",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e787a15e4b07b9ecd52e34745c3bca0e44d281894dfab372dcceab72c7f93911"
+}

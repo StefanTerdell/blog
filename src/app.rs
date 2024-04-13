@@ -25,7 +25,7 @@ pub fn App() -> impl IntoView {
 
     view! {
         <Title text="Stefan tries to think"/>
-        <Stylesheet id="leptos" href="/pkg/blog.css"/>
+        <Stylesheet id="leptos" href="/style.css"/>
         <Router fallback=error_template>
             <AuthProvider>
                 <div class="max-w-3xl mx-auto">

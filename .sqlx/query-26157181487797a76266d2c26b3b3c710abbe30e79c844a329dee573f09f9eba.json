@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM csrf_tokens WHERE csrf_token = $1 RETURNING redirect_to",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "redirect_to",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "26157181487797a76266d2c26b3b3c710abbe30e79c844a329dee573f09f9eba"
+}

@@ -552,9 +552,19 @@ html {
 }
 
 html {
-  font-family: sans-serif;
+  overflow-x: hidden;
+  padding: 0.5rem;
   text-align: center;
-  padding-left: calc(100vw - 100%);
+}
+
+@media (min-width: 1024px) {
+  html {
+    padding-left: calc(100vw - 100%);
+  }
+}
+
+html {
+  font-family: sans-serif;
 }
 
 *, ::before, ::after {
@@ -2755,10 +2765,6 @@ html {
   gap: 1rem;
 }
 
-.whitespace-nowrap {
-  white-space: nowrap;
-}
-
 .pt-8 {
   padding-top: 2rem;
 }
@@ -3098,6 +3104,10 @@ html {
   .md\:my-4 {
     margin-top: 1rem;
     margin-bottom: 1rem;
+  }
+
+  .md\:whitespace-nowrap {
+    white-space: nowrap;
   }
 
   .md\:text-start {

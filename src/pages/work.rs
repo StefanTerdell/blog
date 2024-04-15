@@ -122,7 +122,7 @@ fn PositionHeader(
     };
 
     view! {
-        <div class="font-serif text-2xl font-black whitespace-nowrap">
+        <div class="font-serif text-2xl font-black md:whitespace-nowrap">
             {match dir {
                 Direction::Left => {
                     view! { <>{title} ", " {company_el}</> }

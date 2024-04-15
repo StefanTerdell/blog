@@ -4,9 +4,9 @@ use leptos::*;
 pub fn App() -> impl IntoView {
     use crate::{
         components::github::Provider as AuthProvider,
+        guestbook::Guestbook,
         pages::{
             blog::{BlogPost, BlogPosts, EditBlogPost},
-            guestbook::Guestbook,
             home::Home,
             work::Work,
         },

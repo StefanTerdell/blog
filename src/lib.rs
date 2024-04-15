@@ -1,10 +1,9 @@
 pub mod app;
 pub mod components;
-#[cfg(feature = "ssr")]
-pub mod fileserv;
+pub mod guestbook;
 pub mod pages;
 #[cfg(feature = "ssr")]
-pub mod state;
+pub mod server;
 pub mod utils;
 
 #[cfg(feature = "hydrate")]

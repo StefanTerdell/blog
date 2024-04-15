@@ -1,6 +1,6 @@
 use super::super::{
+    models,
     server_fns::{delete_post::DeletePost, publish_post::PublishPost},
-    structs,
 };
 use crate::{
     components::{github::UserResource, links::Fa},
@@ -10,7 +10,7 @@ use leptos::*;
 use leptos_router::ActionForm;
 
 #[component]
-pub fn Post<F: Fn() + 'static>(post: structs::GuestbookPost, refetch_posts: F) -> impl IntoView {
+pub fn Post<F: Fn() + 'static>(post: models::GuestbookPost, refetch_posts: F) -> impl IntoView {
     let delete_action = create_server_action::<DeletePost>();
     let publish_action = create_server_action::<PublishPost>();
     let user = expect_context::<UserResource>();

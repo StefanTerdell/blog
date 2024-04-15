@@ -1,5 +1,5 @@
 mod components;
+mod models;
 mod server_fns;
-mod structs;
 
 pub use components::Guestbook;

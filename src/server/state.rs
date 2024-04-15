@@ -1,5 +1,5 @@
 use axum::extract::FromRef;
-use leptos::{get_configuration, LeptosOptions};
+use leptos::*;
 use oauth2::basic::BasicClient;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 

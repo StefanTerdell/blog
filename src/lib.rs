@@ -1,10 +1,12 @@
 pub mod app;
+pub mod blog;
 pub mod components;
 pub mod guestbook;
-pub mod pages;
+pub mod home;
 #[cfg(feature = "ssr")]
 pub mod server;
 pub mod utils;
+pub mod work;
 
 #[cfg(feature = "hydrate")]
 #[wasm_bindgen::prelude::wasm_bindgen]

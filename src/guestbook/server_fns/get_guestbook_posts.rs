@@ -1,14 +1,14 @@
-use super::super::structs;
+use super::super::models;
 #[cfg(feature = "ssr")]
 use crate::utils::user::ssr::AuthSession;
 use leptos::*;
 
 #[server]
-pub async fn get_guestbook_posts() -> Result<Vec<structs::GuestbookPost>, ServerFnError> {
+pub async fn get_guestbook_posts() -> Result<Vec<models::GuestbookPost>, ServerFnError> {
     let user = expect_context::<AuthSession>().current_user;
     let pool = expect_context::<sqlx::PgPool>();
     let posts = sqlx::query_as!(
-        structs::GuestbookPost,
+        models::GuestbookPost,
         "
             SELECT 
                 guestbook_posts.*,

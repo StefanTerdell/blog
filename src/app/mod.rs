@@ -3,14 +3,12 @@ use leptos::*;
 #[component]
 pub fn App() -> impl IntoView {
     use crate::{
+        blog::{BlogPost, BlogPosts, EditBlogPost},
         components::github::Provider as AuthProvider,
         guestbook::Guestbook,
-        pages::{
-            blog::{BlogPost, BlogPosts, EditBlogPost},
-            home::Home,
-            work::Work,
-        },
+        home::Home,
         utils::error_template::{AppError, ErrorTemplate},
+        work::Work,
     };
     use leptos_meta::*;
     use leptos_router::*;

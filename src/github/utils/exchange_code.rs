@@ -20,7 +20,7 @@ struct GithubUser {
 }
 
 #[cfg(feature = "ssr")]
-use crate::utils::user::User;
+use crate::github::models::User;
 
 #[cfg(feature = "ssr")]
 pub async fn exchange_code(
@@ -28,7 +28,7 @@ pub async fn exchange_code(
     code: String,
     pool: sqlx::PgPool,
     oauth_client: oauth2::basic::BasicClient,
-    auth_session: crate::utils::user::ssr::AuthSession,
+    auth_session: crate::github::models::ssr::AuthSession,
 ) -> anyhow::Result<String> {
     #[derive(Deserialize, Debug)]
     struct CsrfRow {

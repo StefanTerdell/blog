@@ -1,4 +1,5 @@
-use crate::utils::user::User;
-use leptos::*;
+mod user;
+mod user_resource;
 
-pub type UserResource = Resource<(), Result<Option<User>, ServerFnError>>;
+pub use user::*;
+pub use user_resource::*;

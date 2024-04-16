@@ -8,6 +8,16 @@ pub struct User {
     pub admin: bool,
 }
 
+use leptos::*;
+
+type UserResource = Resource<(), Result<Option<User>, ServerFnError>>;
+
+impl User {
+    pub fn expect() -> UserResource {
+        expect_context::<UserResource>()
+    }
+}
+
 #[cfg(feature = "ssr")]
 pub mod ssr {
     use super::User;

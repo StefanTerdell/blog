@@ -1,5 +1,5 @@
-use crate::utils::user::ssr::AuthSession;
-use crate::utils::user::User;
+use crate::github::models::ssr::AuthSession;
+use crate::github::models::User;
 use leptos::*;
 
 pub fn expect_admin() -> Result<User, ServerFnError> {

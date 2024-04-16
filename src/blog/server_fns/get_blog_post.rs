@@ -1,6 +1,6 @@
 use super::super::models::BlogPost;
 #[cfg(feature = "ssr")]
-use crate::utils::user::ssr::AuthSession;
+use crate::github::models::ssr::AuthSession;
 use leptos::*;
 
 #[server]

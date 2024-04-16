@@ -3,7 +3,9 @@ use axum::{
     response::{IntoResponse, Redirect},
 };
 
-use crate::{github::utils::exchange_code, server::state::AppState, utils::user::ssr::AuthSession};
+use crate::{
+    github::models::ssr::AuthSession, github::utils::exchange_code, server::state::AppState,
+};
 use leptos::*;
 use serde::Deserialize;
 

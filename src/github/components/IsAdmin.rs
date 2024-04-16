@@ -1,10 +1,9 @@
-use super::super::models::UserResource;
-use crate::utils::user::User;
+use crate::github::models::User;
 use leptos::*;
 
 #[component]
 pub fn IsAdmin(#[prop(optional, into)] fallback: ViewFn, children: ChildrenFn) -> impl IntoView {
-    let user = expect_context::<UserResource>();
+    let user = User::expect();
 
     view! {
         <Show

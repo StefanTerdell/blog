@@ -1,4 +1,4 @@
-use crate::{app::*, server::state::AppState, utils::user::ssr::AuthSession};
+use crate::{app::*, github::models::ssr::AuthSession, server::state::AppState};
 use axum::{
     body::Body,
     extract::{Request, State},

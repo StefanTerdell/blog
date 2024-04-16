@@ -1,8 +1,8 @@
-use crate::utils::user::User;
+use crate::github::models::User;
 use leptos::*;
 
 #[cfg(feature = "ssr")]
-use crate::utils::user::ssr::AuthSession;
+use crate::github::models::ssr::AuthSession;
 
 #[server]
 pub async fn get_user_from_session() -> Result<Option<User>, ServerFnError> {

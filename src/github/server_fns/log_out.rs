@@ -4,7 +4,7 @@ use leptos::*;
 use super::super::utils::delete_token;
 
 #[cfg(feature = "ssr")]
-use crate::utils::user::ssr::AuthSession;
+use crate::github::models::ssr::AuthSession;
 
 #[cfg(feature = "ssr")]
 use sqlx::PgPool;

@@ -8,6 +8,7 @@ async fn main() {
     use axum_session_auth::{AuthConfig, AuthSessionLayer};
     use blog::{
         app::*,
+        github::models::User,
         server::{
             handlers::{
                 blog_file::blog_file_handler, file_and_error::file_and_error_handler,
@@ -16,7 +17,6 @@ async fn main() {
             },
             state::AppState,
         },
-        utils::user::User,
     };
     use leptos::*;
     use leptos_axum::{generate_route_list, LeptosRoutes};

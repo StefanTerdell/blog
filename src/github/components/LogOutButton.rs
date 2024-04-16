@@ -1,7 +1,5 @@
-use super::{
-    super::{models::UserResource, server_fns::LogOut},
-    GithubIconButton,
-};
+use super::{super::server_fns::LogOut, GithubIconButton};
+use crate::github::models::User;
 use leptos::*;
 use leptos_router::ActionForm;
 
@@ -11,7 +9,7 @@ pub fn LogOutButton(
     #[prop(optional)] neutral: bool,
 ) -> impl IntoView {
     let action = create_server_action::<LogOut>();
-    let user = expect_context::<UserResource>();
+    let user = User::expect();
     let text = if small {
         "Log out"
     } else {

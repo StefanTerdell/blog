@@ -2,7 +2,7 @@ use super::super::{
     models,
     server_fns::{delete_post::DeletePost, publish_post::PublishPost},
 };
-use crate::{github::models::UserResource, utils::user::User};
+use crate::github::models::User;
 use leptos::*;
 use leptos_router::ActionForm;
 
@@ -10,7 +10,7 @@ use leptos_router::ActionForm;
 pub fn Post<F: Fn() + 'static>(post: models::GuestbookPost, refetch_posts: F) -> impl IntoView {
     let delete_action = create_server_action::<DeletePost>();
     let publish_action = create_server_action::<PublishPost>();
-    let user = expect_context::<UserResource>();
+    let user = User::expect();
 
     create_effect(move |_| {
         if delete_action.value().get().is_some() || publish_action.value().get().is_some() {

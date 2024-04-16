@@ -1,13 +1,13 @@
 use super::{super::server_fns::get_guestbook_posts::get_guestbook_posts, NewPost, Post};
 use crate::github::{
     components::{LogInButton, LoggedIn},
-    models::UserResource,
+    models::User,
 };
 use leptos::*;
 
 #[component]
 pub fn Guestbook() -> impl IntoView {
-    let user = expect_context::<UserResource>();
+    let user = User::expect();
     let posts = create_blocking_resource(move || user(), move |_| get_guestbook_posts());
     let refetch = move || posts.refetch();
 

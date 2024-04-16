@@ -1,7 +1,5 @@
-use super::{
-    super::{models::UserResource, server_fns::LogIn},
-    GithubIconButton,
-};
+use super::{super::server_fns::LogIn, GithubIconButton};
+use crate::github::models::User;
 
 use leptos::*;
 use leptos_router::{use_location, ActionForm};
@@ -13,7 +11,7 @@ pub fn LogInButton(
 ) -> impl IntoView {
     let location = use_location();
     let action = create_server_action::<LogIn>();
-    let user = expect_context::<UserResource>();
+    let user = User::expect();
     let text = if small {
         "Log in"
     } else {

@@ -2824,7 +2824,7 @@ html {
     margin-left: auto;
     margin-right: auto;
   }
-  h1 h2 h3 h4 {
+  h1, h2, h3, h4 {
     font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   }
   a {

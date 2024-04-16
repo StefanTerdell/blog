@@ -2,10 +2,7 @@ use super::super::{
     models,
     server_fns::{delete_post::DeletePost, publish_post::PublishPost},
 };
-use crate::{
-    components::{github::UserResource, links::Fa},
-    utils::user::User,
-};
+use crate::{components::links::Fa, github::models::UserResource, utils::user::User};
 use leptos::*;
 use leptos_router::ActionForm;
 

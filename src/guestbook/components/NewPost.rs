@@ -1,5 +1,5 @@
 use super::super::server_fns::create_guestbook_post::CreateGuestbookPost;
-use crate::components::github::LogOutButton;
+use crate::github::components::LogOutButton;
 use leptos::*;
 use leptos_router::ActionForm;
 

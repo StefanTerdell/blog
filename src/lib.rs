@@ -1,6 +1,7 @@
 pub mod app;
 pub mod blog;
 pub mod components;
+pub mod github;
 pub mod guestbook;
 pub mod home;
 #[cfg(feature = "ssr")]

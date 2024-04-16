@@ -1,5 +1,5 @@
 use super::super::models::BlogPost;
-use crate::components::{github::IsAdmin, links::FA};
+use crate::{components::links::FA, github::components::IsAdmin};
 use leptos::*;
 use leptos_router::A;
 

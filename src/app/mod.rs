@@ -4,7 +4,7 @@ use leptos::*;
 pub fn App() -> impl IntoView {
     use crate::{
         blog::{BlogPost, BlogPosts, EditBlogPost},
-        components::github::Provider as AuthProvider,
+        github::components::Provider as AuthProvider,
         guestbook::Guestbook,
         home::Home,
         utils::error_template::{AppError, ErrorTemplate},

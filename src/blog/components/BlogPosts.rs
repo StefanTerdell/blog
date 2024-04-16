@@ -1,5 +1,5 @@
 use super::super::server_fns::get_blog_post_list::get_blog_post_list;
-use crate::components::{github::IsAdmin, links::FA};
+use crate::{components::links::FA, github::components::IsAdmin};
 use leptos::*;
 use leptos_router::A;
 

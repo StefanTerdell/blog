@@ -1,5 +1,8 @@
 use super::{super::server_fns::get_guestbook_posts::get_guestbook_posts, NewPost, Post};
-use crate::components::github::{LogInButton, LoggedIn, UserResource};
+use crate::github::{
+    components::{LogInButton, LoggedIn},
+    models::UserResource,
+};
 use leptos::*;
 
 #[component]

@@ -1,18 +1,19 @@
+use crate::{
+    blog::{BlogPost, BlogPosts, EditBlogPost},
+    github::components::Provider as AuthProvider,
+    guestbook::Guestbook,
+    home::Home,
+    utils::error_template::{AppError, ErrorTemplate},
+    work::Work,
+};
+use icondata::{AiGithubFilled, AiLinkedinFilled};
 use leptos::*;
+use leptos_icons::*;
+use leptos_meta::*;
+use leptos_router::*;
 
 #[component]
 pub fn App() -> impl IntoView {
-    use crate::{
-        blog::{BlogPost, BlogPosts, EditBlogPost},
-        github::components::Provider as AuthProvider,
-        guestbook::Guestbook,
-        home::Home,
-        utils::error_template::{AppError, ErrorTemplate},
-        work::Work,
-    };
-    use leptos_meta::*;
-    use leptos_router::*;
-
     provide_meta_context();
 
     let error_template = || {
@@ -27,7 +28,40 @@ pub fn App() -> impl IntoView {
         <Router fallback=error_template>
             <AuthProvider>
                 <div class="max-w-3xl mx-auto">
-                    <Navigation/>
+                    <div class="w-full md:my-4 flex items-center justify-between">
+                        <nav class="flex gap-2">
+                            <A href="/" active_class="underline">
+                                "Home"
+                            </A>
+                            <A href="/work" active_class="underline">
+                                "Work"
+                            </A>
+                            <A href="/blog" active_class="underline">
+                                "Blog"
+                            </A>
+                            <A href="/guestbook" active_class="underline">
+                                "Guestbook"
+                            </A>
+                        </nav>
+                        <div class="flex gap-2">
+                            <a
+                                class="tooltip tooltip-bottom"
+                                data-tip="My GitHub profile"
+                                href="https://www.github.com/stefanterdell"
+                                target="_blank"
+                            >
+                                <Icon width="24" height="24" icon=AiGithubFilled/>
+                            </a>
+                            <a
+                                class="tooltip tooltip-bottom"
+                                data-tip="My LinkedIn profile"
+                                href="https://www.linkedin.com/in/stefan-terdell-58530739/"
+                                target="_blank"
+                            >
+                                <Icon width="24" height="24" icon=AiLinkedinFilled/>
+                            </a>
+                        </div>
+                    </div>
                     <main class="sm:my-4 pt-8">
                         <Routes>
                             <Route path="" view=Home/>
@@ -41,49 +75,5 @@ pub fn App() -> impl IntoView {
                 </div>
             </AuthProvider>
         </Router>
-    }
-}
-
-#[component]
-fn Navigation() -> impl IntoView {
-    use icondata::{AiGithubFilled, AiLinkedinFilled};
-    use leptos_icons::*;
-    use leptos_router::*;
-
-    view! {
-        <div class="w-full md:my-4 flex items-center justify-between">
-            <nav class="flex gap-2">
-                <A href="/" active_class="underline">
-                    "Home"
-                </A>
-                <A href="/work" active_class="underline">
-                    "Work"
-                </A>
-                <A href="/blog" active_class="underline">
-                    "Blog"
-                </A>
-                <A href="/guestbook" active_class="underline">
-                    "Guestbook"
-                </A>
-            </nav>
-            <div class="flex gap-2">
-                <a
-                    class="tooltip tooltip-bottom"
-                    data-tip="My GitHub profile"
-                    href="https://www.github.com/stefanterdell"
-                    target="_blank"
-                >
-                    <Icon width="24" height="24" icon=AiGithubFilled/>
-                </a>
-                <a
-                    class="tooltip tooltip-bottom"
-                    data-tip="My LinkedIn profile"
-                    href="https://www.linkedin.com/in/stefan-terdell-58530739/"
-                    target="_blank"
-                >
-                    <Icon width="24" height="24" icon=AiLinkedinFilled/>
-                </a>
-            </div>
-        </div>
     }
 }

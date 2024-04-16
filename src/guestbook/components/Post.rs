@@ -2,7 +2,7 @@ use super::super::{
     models,
     server_fns::{delete_post::DeletePost, publish_post::PublishPost},
 };
-use crate::{components::links::Fa, github::models::UserResource, utils::user::User};
+use crate::{github::models::UserResource, utils::user::User};
 use leptos::*;
 use leptos_router::ActionForm;
 
@@ -24,7 +24,9 @@ pub fn Post<F: Fn() + 'static>(post: models::GuestbookPost, refetch_posts: F) ->
                 <i class="badge">"This post is awaiting moderation."</i>
             </Show>
             <div>
-                <Fa href=post.user_url>{post.user_name}</Fa>
+                <a class="fancy-link" href=post.user_url>
+                    {post.user_name}
+                </a>
                 <span>": " {post.content}</span>
             </div>
             <div class="flex gap-2">

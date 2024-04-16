@@ -1,5 +1,5 @@
 use super::super::server_fns::get_blog_post_list::get_blog_post_list;
-use crate::{components::links::FA, github::components::IsAdmin};
+use crate::github::components::IsAdmin;
 use leptos::*;
 use leptos_router::A;
 
@@ -17,9 +17,9 @@ pub fn BlogPosts() -> impl IntoView {
                             .map(|post| {
                                 view! {
                                     <div>
-                                        <FA class="text-2xl font-serif" href=post.slug>
+                                        <A class="fancy-link text-2xl font-serif" href=post.slug>
                                             {post.title}
-                                        </FA>
+                                        </A>
                                         <p class="prose-neutral italic font-mono">
                                             <time>
                                                 {post.published_time.format("%d/%m/%Y").to_string()}

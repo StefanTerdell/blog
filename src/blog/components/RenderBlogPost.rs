@@ -1,5 +1,5 @@
 use super::super::models::BlogPost;
-use crate::{components::links::FA, github::components::IsAdmin};
+use crate::github::components::IsAdmin;
 use leptos::*;
 use leptos_router::A;
 
@@ -8,7 +8,9 @@ pub fn RenderBlogPost(post: BlogPost) -> impl IntoView {
     view! {
         <article class="prose max-w-6xl">
             <h1 class="text-5xl mb-2 font-serif">
-                <FA href="/blog">{post.title}</FA>
+                <A class="fancy-link" href="/blog">
+                    {post.title}
+                </A>
             </h1>
             <time class="italic font-mono">
                 {post.published_time.format("Published %d/%m/%Y").to_string()}

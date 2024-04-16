@@ -8,10 +8,13 @@ pub fn PositionHeader(
     company: String,
     company_url: Option<String>,
 ) -> impl IntoView {
-    use crate::components::links::Fa;
-
     let company_el = match company_url {
-        Some(href) => view! { <Fa href=href>{company}</Fa> }.into_view(),
+        Some(href) => view! {
+            <a class="fancy-link" href=href>
+                {company}
+            </a>
+        }
+        .into_view(),
         None => company.into_view(),
     };
 

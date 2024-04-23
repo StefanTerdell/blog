@@ -10,7 +10,7 @@ let positions = vec![
         "Cleura",
         Some("https://cleura.com/"),
         "September 2023 - Present",
-        "In my current role at Cleura, I help develop our user portal, spending most of my time in our React frontend, dabbling in PHP for the first time as well. Actually finding PHP surprisingly pleasant to work with! We've got a really interesting OpenStack architecture under the hood that's been really exciting to get to know more about as well. We're all on the cloud now after all, so its feels good to finally get to know what makes it tick. Also getting to work with Gitlab CI and Terraform, as well as flexing the old OAuth knowledge while deploying Keycloak.",
+        "In my current role at Cleura, I help develop our user portal, spending most of my time in our React frontend, dabbling in PHP for the first time as well. Actually finding PHP surprisingly pleasant to work with! We've got a really interesting OpenStack architecture under the hood that's been really exciting to get to know more about as well. We're all on the cloud now after all, so its feels good to finally get to know what makes it tick. Also getting to work with CI/CD and general devops, as well as flexing the old OAuth knowledge while deploying Keycloak.",
     ),
     PositionInfo::new(
         "Lead Developer",

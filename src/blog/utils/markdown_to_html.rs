@@ -5,6 +5,7 @@ pub fn markdown_to_html(content: &String) -> String {
     options.extension.table = true;
     options.extension.footnotes = true;
     options.extension.tasklist = true;
+    options.render.unsafe_ = true;
 
     let mut plugins = comrak::Plugins::default();
     let adapter = comrak::plugins::syntect::SyntectAdapterBuilder::new()

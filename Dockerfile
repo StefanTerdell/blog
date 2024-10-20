@@ -47,7 +47,7 @@ COPY --from=builder /app/syntaxes.bin /app/
 
 # Set any required env variables and
 ENV RUST_LOG="info"
-ENV LEPTOS_SITE_ADDR="0.0.0.0:3000"
+ENV LEPTOS_SITE_ADDR="0.0.0.0:8080"
 ENV LEPTOS_SITE_ROOT="site"
 EXPOSE 8080
 

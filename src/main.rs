@@ -43,9 +43,9 @@ async fn main() {
             "/api/*fn_name",
             get(server_fn_handler).post(server_fn_handler),
         )
+        .leptos_routes_with_handler(generate_route_list(App), get(leptos_routes_handler))
         .route("/blog-files/:file_name", get(blog_file_handler))
         .route("/callback", get(oauth_callback_handler))
-        .leptos_routes_with_handler(generate_route_list(App), get(leptos_routes_handler))
         .layer(
             AuthSessionLayer::<User, i32, SessionPgPool, PgPool>::new(Some(app_state.pool.clone()))
                 .with_config(auth_config),

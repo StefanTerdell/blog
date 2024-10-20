@@ -42,9 +42,12 @@ COPY --from=builder /app/target/site /app/site
 # Copy Cargo.toml if it’s needed at runtime
 COPY --from=builder /app/Cargo.toml /app/
 
+# Copy syntax file
+COPY --from=builder /app/syntaxes.bin /app/
+
 # Set any required env variables and
 ENV RUST_LOG="info"
-ENV LEPTOS_SITE_ADDR="0.0.0.0:8080"
+ENV LEPTOS_SITE_ADDR="0.0.0.0:3000"
 ENV LEPTOS_SITE_ROOT="site"
 EXPOSE 8080
 

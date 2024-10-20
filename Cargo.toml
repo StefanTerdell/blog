@@ -7,58 +7,66 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-axum = { version = "0.7", features=["macros"], optional = true }
+axum = { version = "0.7.6", features = ["macros"], optional = true }
 console_error_panic_hook = "0.1"
 leptos = { version = "0.6", features = ["nightly"] }
 leptos_axum = { version = "0.6", optional = true }
 leptos_meta = { version = "0.6", features = ["nightly"] }
 leptos_router = { version = "0.6", features = ["nightly"] }
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
-tower = { version = "0.4", optional = true }
+tower = { version = "0.4", features = ["util"], optional = true }
 tower-http = { version = "0.5", features = ["fs"], optional = true }
-wasm-bindgen = "=0.2.92"
+wasm-bindgen = "=0.2.93"
 thiserror = "1"
 tracing = { version = "0.1", optional = true }
 http = "1"
 leptos_icons = "0.3.0"
 icondata = "0.3.0"
 dotenv = "0.15.0"
-reqwest = { version = "0.12.1", features = ["json", "rustls-tls"], default-features=false }
+reqwest = { version = "0.12.1", features = [
+  "json",
+  "rustls-tls",
+], default-features = false }
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 axum-extra = { version = "0.9.3", features = ["cookie"] }
-sqlx = { version = "0.7.4", features = ["postgres", "runtime-tokio-rustls", "chrono"], optional=true }
+sqlx = { version = "0.7.4", features = [
+  "postgres",
+  "runtime-tokio-rustls",
+  "chrono",
+], optional = true }
 cfg-if = "1.0.0"
 axum_session_auth = { version = "0.13.0", optional = true }
 axum_session = { version = "0.13.0", optional = true }
 chrono = { version = "0.4.37", features = ["serde"] }
 oauth2 = { version = "4.4.2", optional = true }
 anyhow = "1.0.81"
-pulldown-cmark = {version= "0.10.2", optional = true }
+pulldown-cmark = { version = "0.10.2", optional = true }
 web-sys = { version = "0.3.69", features = ["FileList", "File"] }
-server_fn = { version = "0.6.11", features = ["serde-lite", "multipart"] }
+server_fn = { version = "0.6.15", features = ["multipart"] }
+comrak = { version = "0.29.0", optional = true }
+syntect = { version = "5.2.0", optional = true }
 
 [features]
 hydrate = ["leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]
 ssr = [
-    "dep:axum",
-    "dep:tokio",
-    "dep:tower",
-    "dep:tower-http",
-    "dep:leptos_axum",
-    "dep:sqlx",
-    "dep:oauth2",
-    "dep:axum_session_auth",
-    "dep:axum_session",
-    "leptos/ssr",
-    "leptos_meta/ssr",
-    "leptos_router/ssr",
-    "dep:tracing",
-    "dep:pulldown-cmark"
+  "dep:axum",
+  "dep:axum_session",
+  "dep:axum_session_auth",
+  "dep:leptos_axum",
+  "dep:oauth2",
+  "dep:pulldown-cmark",
+  "dep:sqlx",
+  "dep:tokio",
+  "dep:tower",
+  "dep:tower-http",
+  "dep:tracing",
+  "dep:comrak",
+  "dep:syntect",
+  "leptos/ssr",
+  "leptos_meta/ssr",
+  "leptos_router/ssr",
 ]
-axum_session_auth = ["dep:axum_session_auth"]
-axum_session = ["dep:axum_session"]
-oauth2 = ["dep:oauth2"]
 
 # Defines a size-optimized profile for the WASM bundle in release mode
 [profile.wasm-release]

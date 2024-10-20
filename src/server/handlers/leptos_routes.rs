@@ -19,7 +19,7 @@ pub async fn leptos_routes_handler(
             provide_context(app_state.oauth_client.clone());
             provide_context(app_state.pool.clone());
         },
-        move || view! { <App/> },
+        move || view! { <App /> },
     );
 
     handler(request).await.into_response()
